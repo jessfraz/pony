@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"text/tabwriter"
@@ -65,7 +66,7 @@ func preload(c *cli.Context) (err error) {
 	secretKeyring = filepath.Join(gpgPath, "secring.gpg")
 
 	// if they passed an arguement, run the prechecks
-	// TODO(jfrazelle): This will run even if the command they issue
+	// TODO(jfrazelle): this will run even if the command they issue
 	// does not exist, which is kinda shitty
 	if len(c.Args()) > 0 {
 		preChecks()
@@ -189,8 +190,13 @@ func main() {
 			Name:    "list",
 			Aliases: []string{"ls"},
 			Usage:   "List all secrets",
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "filter, f",
+					Usage: "filter secrets keys by a regular expression",
+				},
+			},
 			Action: func(c *cli.Context) {
-				// TODO(jfrazelle): add some filtering
 				_, stdout, _ := term.StdStreams()
 				w := tabwriter.NewWriter(stdout, 20, 1, 3, ' ', 0)
 
@@ -208,6 +214,12 @@ func main() {
 					sort.Strings(mk)
 
 					for _, key := range mk {
+						filter := c.String("filter")
+						if filter != "" {
+							if ok, _ := regexp.MatchString(c.String("filter"), key); !ok {
+								continue
+							}
+						}
 						fmt.Fprintf(w, "%s\t%s\n", key, m[key])
 					}
 				}

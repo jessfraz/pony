@@ -68,7 +68,15 @@ $ pony ls
 KEY                                     VALUE
 com.aws.amazon.prod.key                 KSUIIUEJDMSDBSDJFOFR
 com.aws.amazon.prod.secret              skljdUYGjsndhfjjiosjdfgr/HKKSU
-com.github.devnull@butts.com.recovery   we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
+com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
 com.github.jfrazelle.token              LKJHSDLFKJDHF
 com.twitter.frazelledazzell.token       KJDHJKFHDSBJDF
+
+# you can also filter by a regular expression
+$ pony ls --filter com.github*
+# GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>": 
+
+KEY                                     VALUE
+com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
+com.github.jfrazelle.token              LKJHSDLFKJDHF
 ```
