@@ -34,13 +34,15 @@ var (
 	publicKeyring string
 	secretKeyring string
 
+	s SecretFile
+
 	debug   bool
 	version bool
 )
 
 // preload initializes any global options and configuration
 // before the main or sub commands are run
-func preload(c *cli.Context) error {
+func preload(c *cli.Context) (err error) {
 	if c.GlobalBool("debug") {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
@@ -61,6 +63,13 @@ func preload(c *cli.Context) error {
 	// does not exist, which is kinda shitty
 	if len(c.Args()) > 0 {
 		preChecks()
+	}
+
+	// we need to read the secrets file for all commands
+	// might as well be dry about it
+	s, err = readSecretsFile(filestore)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -103,11 +112,6 @@ func main() {
 					cli.ShowSubcommandHelp(c)
 				}
 
-				s, err := readSecretsFile(filestore)
-				if err != nil {
-					logrus.Fatal(err)
-				}
-
 				// add the key value pair to secrets
 				key, value := args[0], args[1]
 				s.setKeyValue(key, value, false)
@@ -123,11 +127,6 @@ func main() {
 				args := c.Args()
 				if len(args) < 1 {
 					cli.ShowSubcommandHelp(c)
-				}
-
-				s, err := readSecretsFile(filestore)
-				if err != nil {
-					logrus.Fatal(err)
 				}
 
 				key := args[0]
@@ -158,11 +157,6 @@ func main() {
 					cli.ShowSubcommandHelp(c)
 				}
 
-				s, err := readSecretsFile(filestore)
-				if err != nil {
-					logrus.Fatal(err)
-				}
-
 				// add the key value pair to secrets
 				key := args[0]
 				if _, ok := s.Secrets[key]; !ok {
@@ -185,11 +179,7 @@ func main() {
 			Aliases: []string{"ls"},
 			Usage:   "List all secrets",
 			Action: func(c *cli.Context) {
-				s, err := readSecretsFile(filestore)
-				if err != nil {
-					logrus.Fatal(err)
-				}
-
+				// TODO(jfrazelle): add some filtering
 				_, stdout, _ := term.StdStreams()
 				w := tabwriter.NewWriter(stdout, 20, 1, 3, ' ', 0)
 
@@ -224,11 +214,6 @@ func main() {
 				if len(args) < 2 {
 					logrus.Errorf("You need to pass a key and value to the command. ex: %s %s com.example.apikey EUSJCLLAWE", app.Name, c.Command.Name)
 					cli.ShowSubcommandHelp(c)
-				}
-
-				s, err := readSecretsFile(filestore)
-				if err != nil {
-					logrus.Fatal(err)
 				}
 
 				// add the key value pair to secrets
