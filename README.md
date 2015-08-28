@@ -37,6 +37,16 @@ GLOBAL OPTIONS:
 
 ### Best Practices
 
+#### `HISTIGNORE`
+
+You should obviously add pony to your `HISTIGNORE` for example:
+
+```bash
+export HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help:pony:pony *";
+```
+
+#### Namespacing Keys
+
 You should namespace the keys for your secrets like the following:
 
 ```console
