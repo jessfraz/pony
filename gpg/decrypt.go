@@ -76,7 +76,7 @@ func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error
 
 	// Get the passphrase and read the private key.
 	// Have not touched the encrypted string yet
-	stdin, stdout, stderr := term.StdStreams()
+	stdin, _, stderr := term.StdStreams()
 	stdinFd, _ := term.GetFdInfo(stdin)
 	oldState, err := term.SaveState(stdinFd)
 	if err != nil {
@@ -84,12 +84,12 @@ func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error
 	}
 
 	// prompt for passphrase
-	fmt.Fprintf(stdout, "GPG Passphrase for key%s: ", identityString)
+	fmt.Fprintf(stderr, "GPG Passphrase for key%s: ", identityString)
 	term.DisableEcho(stdinFd, oldState)
 
 	// read what they inputed
 	passphrase := readInput(stdin, stderr)
-	fmt.Fprint(stdout, "\n\n")
+	fmt.Fprint(stderr, "\n\n")
 
 	// restore the terminal
 	term.RestoreTerminal(stdinFd, oldState)
