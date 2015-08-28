@@ -22,7 +22,7 @@ func readInput(in io.Reader, out io.Writer) []byte {
 	return line
 }
 
-func Decrypt(f io.Reader, secretKeyring string) (io.Reader, error) {
+func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error) {
 	// Open the private key file
 	keyringFileBuffer, err := os.Open(secretKeyring)
 	if err != nil {
@@ -34,13 +34,40 @@ func Decrypt(f io.Reader, secretKeyring string) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	logrus.Debugf("Entity List: %+v", entityList)
-	// TODO(jfrazelle): find which key is good
-	entity := entityList[1]
+
+	var entity *openpgp.Entity
+	if defaultGPGKey != "" {
+
+		// loop through their keys until we find the one they want
+		var foundKey bool
+		for _, e := range entityList {
+			// we can match on the fingerprint or the keyid because
+			// why not? I bet no one knows the difference
+			if e.PrimaryKey.KeyIdString() == defaultGPGKey ||
+				e.PrimaryKey.KeyIdShortString() == defaultGPGKey ||
+				fmt.Sprintf("%X", e.PrimaryKey.Fingerprint) == defaultGPGKey {
+				foundKey = true
+				entity = e
+				break
+			}
+		}
+
+		if !foundKey {
+			// we didn't find the key they specified
+			return nil, fmt.Errorf("Could not find private GPG Key with id: %s", defaultGPGKey)
+		}
+
+	} else {
+		// they didn't set a default key
+		// so let's hope it is the first one :/
+		// TODO(jfrazelle): maybe prompt here if they have
+		// more than one private key
+		entity = entityList[0]
+	}
 
 	var identityString string
 	for _, identity := range entity.Identities {
-		identityString = fmt.Sprintf(" %q", identity.Name)
+		identityString = fmt.Sprintf(" %s [%s]", identity.Name, entity.PrimaryKey.KeyIdString())
 		break
 	}
 

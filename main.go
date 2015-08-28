@@ -29,6 +29,7 @@ const (
 )
 
 var (
+	defaultGPGKey string
 	filestore     string
 	gpgPath       string
 	publicKeyring string
@@ -46,6 +47,8 @@ func preload(c *cli.Context) (err error) {
 	if c.GlobalBool("debug") {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
+
+	defaultGPGKey = c.GlobalString("keyid")
 
 	home := homedir.Get()
 	homeShort := homedir.GetShortcutString()
@@ -69,7 +72,7 @@ func preload(c *cli.Context) (err error) {
 	// might as well be dry about it
 	s, err = readSecretsFile(filestore)
 	if err != nil {
-		return err
+		logrus.Fatal(err)
 	}
 
 	return nil
@@ -98,6 +101,11 @@ func main() {
 			Name:  "gpgpath",
 			Value: fmt.Sprintf("%s/%s", homedir.GetShortcutString(), defaultGPGPath),
 			Usage: "filepath used for gpg keys",
+		},
+		cli.StringFlag{
+			Name:   "keyid",
+			Usage:  "optionally set specific gpg keyid/fingerprint to use for encryption & decryption",
+			EnvVar: fmt.Sprintf("%s_KEYID", strings.ToUpper(app.Name)),
 		},
 	}
 	app.Commands = []cli.Command{

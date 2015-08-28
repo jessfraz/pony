@@ -49,7 +49,7 @@ func readSecretsFile(filename string) (s SecretFile, err error) {
 	defer f.Close()
 
 	// decrypt the file
-	decryptedFile, err := gpg.Decrypt(f, secretKeyring)
+	decryptedFile, err := gpg.Decrypt(f, secretKeyring, defaultGPGKey)
 	if err != nil {
 		return s, fmt.Errorf("gpg decrypt file failed: %v", err)
 	}

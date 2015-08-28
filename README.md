@@ -18,7 +18,7 @@ AUTHOR(S):
    
 COMMANDS:
    add, save    Add a new secret
-   delete       Delete a secret or a specific recovery code
+   delete, rm   Delete a secret
    get          Get the value of a secret
    list, ls     List all secrets
    update       Update a secret
@@ -27,7 +27,8 @@ COMMANDS:
 GLOBAL OPTIONS:
    --debug, -d              run in debug mode
    --file, -f "~/.pony"     file to use for saving encrypted secrets
-   --gpgpath "~/.gnupg"     filepath used for gpg keys
+   --keyid                  optionally set specific gpg keyid/fingerprint to use for encryption & decryption [$PONY_KEYID]
+   --gpgpath "~/.gnupg/"    filepath used for gpg keys
    --help, -h               show help
    --generate-bash-completion   
    --version, -v            print the version
