@@ -40,6 +40,24 @@ You should namespace the keys for your secrets like the following:
 
 ```console
 $ pony add com.twitter.frazelledazzell.token KJDHJKFHDSBJDF
+# GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>": 
 
-$ pony add com.github.jfrazelle.token  LKJHSDLFKJDHF
+$ pony add com.github.jfrazelle.token LKJHSDLFKJDHF
+# GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>": 
+
+# if a key ends with `.recovery`
+# we assume it is a list of comma seperated 
+# strings that are recovery codes
+$ pony add com.github.devnull@butts.com.recovery we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
+# GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>": 
+
+$ pony ls
+# GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>": 
+
+KEY                                     VALUE
+com.aws.amazon.prod.key                 KSUIIUEJDMSDBSDJFOFR
+com.aws.amazon.prod.secret              skljdUYGjsndhfjjiosjdfgr/HKKSU
+com.github.devnull@butts.com.recovery   we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
+com.github.jfrazelle.token              LKJHSDLFKJDHF
+com.twitter.frazelledazzell.token       KJDHJKFHDSBJDF
 ```

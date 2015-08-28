@@ -9,8 +9,7 @@ import (
 )
 
 type SecretFile struct {
-	Secrets       map[string]string   `json:"secrets,omitempty"`
-	RecoveryCodes map[string][]string `json:"recoverycodes,omitempty"`
+	Secrets map[string]string `json:"secrets,omitempty"`
 }
 
 // preChecks makes sure the user has gpg set up for saving secrets

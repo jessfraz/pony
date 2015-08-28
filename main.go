@@ -4,17 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/atotto/clipboard"
 	"github.com/codegangsta/cli"
 	"github.com/docker/docker/pkg/homedir"
+	"github.com/docker/docker/pkg/term"
 )
 
 const (
 	defaultFilestore string = ".pony"
-	defaultGPGPath   string = ".gnupg"
+	defaultGPGPath   string = ".gnupg/"
 
 	VERSION = "v0.1.0"
 	BANNER  = ` _ __   ___  _ __  _   _ 
@@ -42,11 +45,14 @@ func preload(c *cli.Context) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	home := homedir.Get()
+	homeShort := homedir.GetShortcutString()
+
 	// set the filestore variable
-	filestore = filepath.Join(homedir.Get(), strings.TrimPrefix(c.GlobalString("file"), homedir.GetShortcutString()))
+	filestore = strings.Replace(c.GlobalString("file"), homeShort, home, 1)
 
 	// set gpg path variables
-	gpgPath = filepath.Join(homedir.Get(), strings.TrimPrefix(c.GlobalString("gpgpath"), homedir.GetShortcutString()))
+	gpgPath = strings.Replace(c.GlobalString("gpgpath"), homeShort, home, 1)
 	publicKeyring = filepath.Join(gpgPath, "pubring.gpg")
 	secretKeyring = filepath.Join(gpgPath, "secring.gpg")
 
@@ -90,13 +96,6 @@ func main() {
 			Name:    "add",
 			Aliases: []string{"save"},
 			Usage:   "Add a new secret",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "type",
-					Value: "kv",
-					Usage: "Type of secret, key value (kv) or recovery code store (rcs)",
-				},
-			},
 			Action: func(c *cli.Context) {
 				args := c.Args()
 				if len(args) < 2 {
@@ -113,12 +112,13 @@ func main() {
 				key, value := args[0], args[1]
 				s.setKeyValue(key, value, false)
 
-				fmt.Printf("Added %s %s to secrets\n", key, value)
+				fmt.Printf("Added %s %s to secrets", key, value)
 			},
 		},
 		{
-			Name:  "delete",
-			Usage: "Delete a secret or a specific recovery code",
+			Name:    "delete",
+			Aliases: []string{"rm"},
+			Usage:   "Delete a secret",
 			Action: func(c *cli.Context) {
 				args := c.Args()
 				if len(args) < 1 {
@@ -190,7 +190,30 @@ func main() {
 					logrus.Fatal(err)
 				}
 
-				fmt.Printf("secrets file: %+v", s)
+				_, stdout, _ := term.StdStreams()
+				w := tabwriter.NewWriter(stdout, 20, 1, 3, ' ', 0)
+
+				// print header
+				fmt.Fprintln(w, "KEY\tVALUE")
+
+				// print the keys alphabetically
+				printSorted := func(m map[string]string) {
+					mk := make([]string, len(m))
+					i := 0
+					for k, _ := range m {
+						mk[i] = k
+						i++
+					}
+					sort.Strings(mk)
+
+					for _, key := range mk {
+						fmt.Fprintf(w, "%s\t%s\n", key, m[key])
+					}
+				}
+
+				printSorted(s.Secrets)
+
+				w.Flush()
 			},
 		},
 		{
@@ -212,7 +235,7 @@ func main() {
 				key, value := args[0], args[1]
 				s.setKeyValue(key, value, true)
 
-				fmt.Printf("Updated secret %s to %s\n", key, value)
+				fmt.Printf("Updated secret %s to %s", key, value)
 			},
 		},
 	}
