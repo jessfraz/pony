@@ -8,6 +8,8 @@ import (
 	"github.com/jfrazelle/pony/gpg"
 )
 
+// SecretFile is the structure for how the
+// decrypted secret filestorage is organized
 type SecretFile struct {
 	Secrets map[string]string `json:"secrets,omitempty"`
 }

@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/openpgp"
 )
 
+// Encrypt a byte with the given publicKeyring
 func Encrypt(b []byte, publicKeyring string) ([]byte, error) {
 	// Read in public key
 	keyringFileBuffer, err := os.Open(publicKeyring)

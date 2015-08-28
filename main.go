@@ -19,8 +19,11 @@ const (
 	defaultFilestore string = ".pony"
 	defaultGPGPath   string = ".gnupg/"
 
+	// VERSION is the command version
 	VERSION = "v0.1.0"
-	BANNER  = ` _ __   ___  _ __  _   _ 
+
+	// BANNER is the commands banner
+	BANNER = ` _ __   ___  _ __  _   _ 
 | '_ \ / _ \| '_ \| | | |
 | |_) | (_) | | | | |_| |
 | .__/ \___/|_| |_|\__, |
@@ -176,7 +179,7 @@ func main() {
 				// copy to clipboard
 				if c.Bool("copy") {
 					if err := clipboard.WriteAll(s.Secrets[key]); err != nil {
-						logrus.Fatal("Clipboard copy failed: %v", err)
+						logrus.Fatalf("Clipboard copy failed: %v", err)
 					}
 					fmt.Println("Copied to clipboard!")
 				}
@@ -198,7 +201,7 @@ func main() {
 				printSorted := func(m map[string]string) {
 					mk := make([]string, len(m))
 					i := 0
-					for k, _ := range m {
+					for k := range m {
 						mk[i] = k
 						i++
 					}
