@@ -9,14 +9,14 @@ import (
 )
 
 // SecretFile is the structure for how the
-// decrypted secret filestorage is organized
+// decrypted secret filestorage is organized.
 type SecretFile struct {
 	Secrets map[string]string `json:"secrets,omitempty"`
 }
 
 // preChecks makes sure the user has gpg set up for saving secrets
-// as well as a filestore file created (even if blank)
-// that way we wont have to be sure about making sure the file exists later
+// as well as a filestore file created (even if blank).
+// That way we wont have to be sure about making sure the file exists later.
 func preChecks() error {
 	gpgErrorString := "Have you generated a gpg key? You can do so with `$ gpg --gen-key`."
 
@@ -40,9 +40,9 @@ func preChecks() error {
 	return nil
 }
 
-// readSecretsFile opens the secrets filestore
+// readSecretsFile opens the secrets filestore,
 // decrypts the file contents, and unmarshals
-// the contents as SecretsFile
+// the contents as SecretsFile.
 func readSecretsFile(filename string) (s SecretFile, err error) {
 	f, err := os.Open(filename)
 	if err != nil {
@@ -66,7 +66,7 @@ func readSecretsFile(filename string) (s SecretFile, err error) {
 }
 
 // writeSecretsFile takes a SecretsFile struct marshals,
-// encrypts, and writes it to the secrets filestore
+// encrypts, and writes it to the secrets filestore.
 func writeSecretsFile(filename string, s SecretFile) error {
 	f, err := os.Create(filestore)
 	if err != nil {

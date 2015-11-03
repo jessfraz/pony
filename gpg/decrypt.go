@@ -22,9 +22,9 @@ func readInput(in io.Reader, out io.Writer) []byte {
 	return line
 }
 
-// Decrypt a io.Reader with the given secretKeyring
+// Decrypt a io.Reader with the given secretKeyring.
 // You can optionally pass a defaultGPGKey to use for the
-// decryption, otherwise it will use the first entity
+// decryption, otherwise it will use the first entity.
 func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error) {
 	// Open the private key file
 	keyringFileBuffer, err := os.Open(secretKeyring)
