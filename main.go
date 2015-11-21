@@ -122,6 +122,7 @@ func main() {
 				if len(args) < 2 {
 					logrus.Errorf("You need to pass a key and value to the command. ex: %s %s com.example.apikey EUSJCLLAWE", app.Name, c.Command.Name)
 					cli.ShowSubcommandHelp(c)
+					return
 				}
 
 				// add the key value pair to secrets
@@ -139,6 +140,7 @@ func main() {
 				args := c.Args()
 				if len(args) < 1 {
 					cli.ShowSubcommandHelp(c)
+					return
 				}
 
 				key := args[0]
@@ -167,6 +169,7 @@ func main() {
 				args := c.Args()
 				if len(args) < 1 {
 					cli.ShowSubcommandHelp(c)
+					return
 				}
 
 				// add the key value pair to secrets
@@ -237,6 +240,7 @@ func main() {
 				if len(args) < 2 {
 					logrus.Errorf("You need to pass a key and value to the command. ex: %s %s com.example.apikey EUSJCLLAWE", app.Name, c.Command.Name)
 					cli.ShowSubcommandHelp(c)
+					return
 				}
 
 				// add the key value pair to secrets
