@@ -13,7 +13,6 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/codegangsta/cli"
 	"github.com/docker/docker/pkg/homedir"
-	"github.com/docker/docker/pkg/term"
 )
 
 const (
@@ -200,8 +199,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) {
-				_, stdout, _ := term.StdStreams()
-				w := tabwriter.NewWriter(stdout, 20, 1, 3, ' ', 0)
+				w := tabwriter.NewWriter(os.Stdout, 20, 1, 3, ' ', 0)
 
 				// print header
 				fmt.Fprintln(w, "KEY\tVALUE")
