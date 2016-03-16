@@ -1,0 +1,58 @@
+{
+	"version": 0,
+	"dependencies": [
+		{
+			"importpath": "github.com/Sirupsen/logrus",
+			"repository": "https://github.com/Sirupsen/logrus",
+			"revision": "a26f43589d737684363ff856c5a0f9f24b946510",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/atotto/clipboard",
+			"repository": "https://github.com/atotto/clipboard",
+			"revision": "bb272b845f1112e10117e3e45ce39f690c0001ad",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/codegangsta/cli",
+			"repository": "https://github.com/codegangsta/cli",
+			"revision": "aca5b047ed14d17224157c3434ea93bf6cdaadee",
+			"branch": "master"
+		},
+		{
+			"importpath": "github.com/docker/docker/pkg/homedir",
+			"repository": "https://github.com/docker/docker",
+			"revision": "2b1b235acf9aa029218e1bd5cd97a369c500e4f5",
+			"branch": "master",
+			"path": "/pkg/homedir"
+		},
+		{
+			"importpath": "github.com/docker/docker/pkg/term",
+			"repository": "https://github.com/docker/docker",
+			"revision": "2b1b235acf9aa029218e1bd5cd97a369c500e4f5",
+			"branch": "master",
+			"path": "/pkg/term"
+		},
+		{
+			"importpath": "github.com/opencontainers/runc/libcontainer/user",
+			"repository": "https://github.com/opencontainers/runc",
+			"revision": "69fe79de1087d11bcae33bc776d7ce3875330860",
+			"branch": "master",
+			"path": "/libcontainer/user"
+		},
+		{
+			"importpath": "golang.org/x/crypto/cast5",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "6025851c7c2bf210daf74d22300c699b16541847",
+			"branch": "master",
+			"path": "/cast5"
+		},
+		{
+			"importpath": "golang.org/x/crypto/openpgp",
+			"repository": "https://go.googlesource.com/crypto",
+			"revision": "6025851c7c2bf210daf74d22300c699b16541847",
+			"branch": "master",
+			"path": "/openpgp"
+		}
+	]
+}
