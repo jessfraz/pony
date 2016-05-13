@@ -1,6 +1,6 @@
 # pony
 
-[![Circle CI](https://circleci.com/gh/jfrazelle/pony.svg?style=svg)](https://circleci.com/gh/jfrazelle/pony)
+[![Travis CI](https://travis-ci.org/jfrazelle/pony.svg?branch=master)](https://travis-ci.org/jfrazelle/pony)
 
 Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG
 
