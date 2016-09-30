@@ -1,6 +1,6 @@
 # pony
 
-[![Travis CI](https://travis-ci.org/jfrazelle/pony.svg?branch=master)](https://travis-ci.org/jfrazelle/pony)
+[![Travis CI](https://travis-ci.org/jessfraz/pony.svg?branch=master)](https://travis-ci.org/jessfraz/pony)
 
 Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG
 
@@ -16,7 +16,7 @@ VERSION:
    v0.1.0
 
 AUTHOR(S):
-   @jfrazelle <no-reply@butts.com>
+   @jessfraz <no-reply@butts.com>
 
 COMMANDS:
    add, save    Add a new secret
@@ -55,7 +55,7 @@ You should namespace the keys for your secrets like the following:
 $ pony add com.twitter.frazelledazzell.token KJDHJKFHDSBJDF
 # GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>":
 
-$ pony add com.github.jfrazelle.token LKJHSDLFKJDHF
+$ pony add com.github.jessfraz.token LKJHSDLFKJDHF
 # GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>":
 
 # if a key ends with `.recovery`
@@ -71,7 +71,7 @@ KEY                                     VALUE
 com.aws.amazon.prod.key                 KSUIIUEJDMSDBSDJFOFR
 com.aws.amazon.prod.secret              skljdUYGjsndhfjjiosjdfgr/HKKSU
 com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
-com.github.jfrazelle.token              LKJHSDLFKJDHF
+com.github.jessfraz.token              LKJHSDLFKJDHF
 com.twitter.frazelledazzell.token       KJDHJKFHDSBJDF
 
 # you can also filter by a regular expression
@@ -80,5 +80,5 @@ $ pony ls --filter com.github*
 
 KEY                                     VALUE
 com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
-com.github.jfrazelle.token              LKJHSDLFKJDHF
+com.github.jessfraz.token              LKJHSDLFKJDHF
 ```

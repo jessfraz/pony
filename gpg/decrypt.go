@@ -63,7 +63,7 @@ func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error
 	} else {
 		// they didn't set a default key
 		// so let's hope it is the first one :/
-		// TODO(jfrazelle): maybe prompt here if they have
+		// TODO(jessfraz): maybe prompt here if they have
 		// more than one private key
 		entity = entityList[0]
 	}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/jfrazelle/pony/gpg"
+	"github.com/jessfraz/pony/gpg"
 )
 
 // SecretFile is the structure for how the

@@ -65,7 +65,7 @@ func preload(c *cli.Context) (err error) {
 	secretKeyring = filepath.Join(gpgPath, "secring.gpg")
 
 	// if they passed an arguement, run the prechecks
-	// TODO(jfrazelle): this will run even if the command they issue
+	// TODO(jessfraz): this will run even if the command they issue
 	// does not exist, which is kinda shitty
 	if len(c.Args()) > 0 {
 		preChecks()
@@ -85,7 +85,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "pony"
 	app.Version = VERSION
-	app.Author = "@jfrazelle"
+	app.Author = "@jessfraz"
 	app.Email = "no-reply@butts.com"
 	app.Usage = "Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG"
 	app.Before = preload
