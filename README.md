@@ -71,7 +71,7 @@ KEY                                     VALUE
 com.aws.amazon.prod.key                 KSUIIUEJDMSDBSDJFOFR
 com.aws.amazon.prod.secret              skljdUYGjsndhfjjiosjdfgr/HKKSU
 com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
-com.github.jessfraz.token              LKJHSDLFKJDHF
+com.github.jessfraz.token               LKJHSDLFKJDHF
 com.twitter.frazelledazzell.token       KJDHJKFHDSBJDF
 
 # you can also filter by a regular expression
@@ -80,5 +80,5 @@ $ pony ls --filter com.github*
 
 KEY                                     VALUE
 com.github.botaccount.recovery          we0wk4,osdknew,4fd9kw,03jfn23,sduj39s
-com.github.jessfraz.token              LKJHSDLFKJDHF
+com.github.jessfraz.token               LKJHSDLFKJDHF
 ```
