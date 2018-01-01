@@ -2,7 +2,7 @@
 
 [![Travis CI](https://travis-ci.org/jessfraz/pony.svg?branch=master)](https://travis-ci.org/jessfraz/pony)
 
-Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG
+Local file-based password, API key, secret, recovery code store backed by GPG.
 
 ```console
 $ pony -h

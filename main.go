@@ -13,22 +13,12 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/codegangsta/cli"
 	"github.com/docker/docker/pkg/homedir"
+	"github.com/jessfraz/pony/version"
 )
 
 const (
 	defaultFilestore string = ".pony"
 	defaultGPGPath   string = ".gnupg/"
-
-	// VERSION is the command version.
-	VERSION = "v0.1.0"
-
-	// BANNER is the commands banner.
-	BANNER = ` _ __   ___  _ __  _   _
-| '_ \ / _ \| '_ \| | | |
-| |_) | (_) | | | | |_| |
-| .__/ \___/|_| |_|\__, |
-|_|                |___/
-`
 )
 
 var (
@@ -40,8 +30,7 @@ var (
 
 	s SecretFile
 
-	debug   bool
-	version bool
+	debug bool
 )
 
 // preload initializes any global options and configuration
@@ -84,7 +73,7 @@ func preload(c *cli.Context) (err error) {
 func main() {
 	app := cli.NewApp()
 	app.Name = "pony"
-	app.Version = VERSION
+	app.Version = fmt.Sprintf("version %s, build %s", version.VERSION, version.GITCOMMIT)
 	app.Author = "@jessfraz"
 	app.Email = "no-reply@butts.com"
 	app.Usage = "Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG"
