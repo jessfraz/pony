@@ -103,7 +103,7 @@ func (s *SecretFile) setKeyValue(key, value string, force bool) error {
 		// check if the key already exists
 		// and warn the user we are overwriting
 		if val, ok := s.Secrets[key]; ok && !force {
-			return fmt.Errorf("Secret for (%s) already exists with value (%s), use `update` command instead.", key, val)
+			return fmt.Errorf("Secret for (%s) already exists with value (%s), use `update` command instead", key, val)
 		}
 		s.Secrets[key] = value
 	}
