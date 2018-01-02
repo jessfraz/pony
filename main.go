@@ -3,17 +3,17 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/atotto/clipboard"
-	"github.com/codegangsta/cli"
-	"github.com/docker/docker/pkg/homedir"
 	"github.com/jessfraz/pony/version"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 const (
@@ -42,14 +42,16 @@ func preload(c *cli.Context) (err error) {
 
 	defaultGPGKey = c.GlobalString("keyid")
 
-	home := homedir.Get()
-	homeShort := homedir.GetShortcutString()
+	home, err := getHome()
+	if err != nil {
+		logrus.Fatal(err)
+	}
 
 	// set the filestore variable
-	filestore = strings.Replace(c.GlobalString("file"), homeShort, home, 1)
+	filestore = strings.Replace(c.GlobalString("file"), homeShortcut, home, 1)
 
 	// set gpg path variables
-	gpgPath = strings.Replace(c.GlobalString("gpgpath"), homeShort, home, 1)
+	gpgPath = strings.Replace(c.GlobalString("gpgpath"), homeShortcut, home, 1)
 	publicKeyring = filepath.Join(gpgPath, "pubring.gpg")
 	secretKeyring = filepath.Join(gpgPath, "secring.gpg")
 
@@ -86,12 +88,12 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "file, f",
-			Value: fmt.Sprintf("%s/%s", homedir.GetShortcutString(), defaultFilestore),
+			Value: fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore),
 			Usage: "file to use for saving encrypted secrets",
 		},
 		cli.StringFlag{
 			Name:  "gpgpath",
-			Value: fmt.Sprintf("%s/%s", homedir.GetShortcutString(), defaultGPGPath),
+			Value: fmt.Sprintf("%s/%s", homeShortcut, defaultGPGPath),
 			Usage: "filepath used for gpg keys",
 		},
 		cli.StringFlag{
@@ -239,4 +241,17 @@ func main() {
 		},
 	}
 	app.Run(os.Args)
+}
+
+func getHome() (string, error) {
+	home := os.Getenv(homeKey)
+	if home != "" {
+		return home, nil
+	}
+
+	u, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return u.HomeDir, nil
 }

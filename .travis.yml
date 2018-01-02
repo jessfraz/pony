@@ -31,7 +31,6 @@
       - cross/pony-linux-arm
       - cross/pony-darwin-amd64.md5
       - cross/pony-darwin-amd64
-      - cross/pony-solaris-amd64.md5
       - cross/pony-linux-arm64.sha256
       - cross/pony-linux-arm.sha256
       - cross/pony-linux-386.sha256
@@ -45,7 +44,6 @@
       - cross/pony-linux-amd64.sha256
       - cross/pony-linux-386.md5
       - cross/pony-freebsd-386
-      - cross/pony-solaris-amd64.sha256
       - cross/pony-windows-amd64
       - cross/pony-windows-amd64.md5
       - cross/pony-windows-amd64.sha256
@@ -53,7 +51,6 @@
       - cross/pony-darwin-386.sha256
       - cross/pony-darwin-amd64.sha256
       - cross/pony-windows-386
-      - cross/pony-solaris-amd64
       - cross/pony-darwin-386
       - cross/pony-linux-386
       - cross/pony-freebsd-amd64

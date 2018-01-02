@@ -307,8 +307,6 @@ func readToNextPublicKey(packets *packet.Reader) (err error) {
 			return
 		}
 	}
-
-	panic("unreachable")
 }
 
 // ReadEntity reads an entity (public key, identities, subkeys etc) from the
@@ -327,9 +325,8 @@ func ReadEntity(packets *packet.Reader) (*Entity, error) {
 		if e.PrivateKey, ok = p.(*packet.PrivateKey); !ok {
 			packets.Unread(p)
 			return nil, errors.StructuralError("first packet was not a public/private key")
-		} else {
-			e.PrimaryKey = &e.PrivateKey.PublicKey
 		}
+		e.PrimaryKey = &e.PrivateKey.PublicKey
 	}
 
 	if !e.PrimaryKey.PubKeyAlgo.CanSign() {
@@ -502,6 +499,12 @@ func NewEntity(name, comment, email string, config *packet.Config) (*Entity, err
 			FlagCertify:  true,
 			IssuerKeyId:  &e.PrimaryKey.KeyId,
 		},
+	}
+
+	// If the user passes in a DefaultHash via packet.Config,
+	// set the PreferredHash for the SelfSignature.
+	if config != nil && config.DefaultHash != 0 {
+		e.Identities[uid.Id].SelfSignature.PreferredHash = []uint8{hashToHashId(config.DefaultHash)}
 	}
 
 	e.Subkeys = make([]Subkey, 1)

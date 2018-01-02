@@ -7,8 +7,8 @@ import (
 	"io"
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/term"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/openpgp"
 )
 
@@ -76,20 +76,19 @@ func Decrypt(f io.Reader, secretKeyring, defaultGPGKey string) (io.Reader, error
 
 	// Get the passphrase and read the private key.
 	// Have not touched the encrypted string yet
-	stdin, _, stderr := term.StdStreams()
-	stdinFd, _ := term.GetFdInfo(stdin)
+	stdinFd, _ := term.GetFdInfo(os.Stdin)
 	oldState, err := term.SaveState(stdinFd)
 	if err != nil {
 		return nil, err
 	}
 
 	// prompt for passphrase
-	fmt.Fprintf(stderr, "GPG Passphrase for key%s: ", identityString)
+	fmt.Fprintf(os.Stderr, "GPG Passphrase for key%s: ", identityString)
 	term.DisableEcho(stdinFd, oldState)
 
 	// read what they inputed
-	passphrase := readInput(stdin, stderr)
-	fmt.Fprint(stderr, "\n\n")
+	passphrase := readInput(os.Stdin, os.Stderr)
+	fmt.Fprint(os.Stderr, "\n\n")
 
 	// restore the terminal
 	term.RestoreTerminal(stdinFd, oldState)
