@@ -8,11 +8,11 @@ Local file-based password, API key, secret, recovery code store backed by GPG.
 
 #### Binaries
 
-- **darwin** [386](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-darwin-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-darwin-amd64)
-- **freebsd** [386](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-freebsd-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-freebsd-amd64)
-- **linux** [386](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-linux-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-linux-amd64) / [arm](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-linux-arm) / [arm64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-linux-arm64)
-- **solaris** [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-solaris-amd64)
-- **windows** [386](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-windows-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.0/pony-windows-amd64)
+- **darwin** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-darwin-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-darwin-amd64)
+- **freebsd** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-freebsd-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-freebsd-amd64)
+- **linux** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-amd64) / [arm](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-arm) / [arm64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-arm64)
+- **solaris** [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-solaris-amd64)
+- **windows** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-windows-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-windows-amd64)
 
 #### Via Go
 
@@ -31,7 +31,7 @@ USAGE:
    pony [global options] command [command options] [arguments...]
 
 VERSION:
-   version v0.2.0, build 33bfbcc
+   version v0.2.1, build 33bfbcc
 
 AUTHOR(S):
    @jessfraz <no-reply@butts.com>
