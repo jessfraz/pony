@@ -340,6 +340,11 @@ func (d *Driver) Remove(id string) error {
 	return nil
 }
 
+// GetLayerPath gets the layer path on host
+func (d *Driver) GetLayerPath(id string) (string, error) {
+	return d.dir(id), nil
+}
+
 // Get returns the rootfs path for the id. This will mount the dir at its given path.
 func (d *Driver) Get(id, mountLabel string) (containerfs.ContainerFS, error) {
 	logrus.Debugf("WindowsGraphDriver Get() id %s mountLabel %s", id, mountLabel)
@@ -779,7 +784,7 @@ func writeLayerReexec() {
 }
 
 // writeLayer writes a layer from a tar file.
-func writeLayer(layerData io.Reader, home string, id string, parentLayerPaths ...string) (int64, error) {
+func writeLayer(layerData io.Reader, home string, id string, parentLayerPaths ...string) (size int64, retErr error) {
 	err := winio.EnableProcessPrivileges([]string{winio.SeBackupPrivilege, winio.SeRestorePrivilege})
 	if err != nil {
 		return 0, err
@@ -804,17 +809,17 @@ func writeLayer(layerData io.Reader, home string, id string, parentLayerPaths ..
 		return 0, err
 	}
 
-	size, err := writeLayerFromTar(layerData, w, filepath.Join(home, id))
-	if err != nil {
-		return 0, err
-	}
+	defer func() {
+		if err := w.Close(); err != nil {
+			// This error should not be discarded as a failure here
+			// could result in an invalid layer on disk
+			if retErr == nil {
+				retErr = err
+			}
+		}
+	}()
 
-	err = w.Close()
-	if err != nil {
-		return 0, err
-	}
-
-	return size, nil
+	return writeLayerFromTar(layerData, w, filepath.Join(home, id))
 }
 
 // resolveID computes the layerID information based on the given id.

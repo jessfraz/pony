@@ -6,6 +6,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/containerd/containerd/defaults"
 	"github.com/docker/docker/pkg/system"
 )
 
@@ -18,11 +19,14 @@ func (r *remote) setDefaults() {
 	if r.GRPC.Address == "" {
 		r.GRPC.Address = filepath.Join(r.stateDir, sockFile)
 	}
+	if r.GRPC.MaxRecvMsgSize == 0 {
+		r.GRPC.MaxRecvMsgSize = defaults.DefaultMaxRecvMsgSize
+	}
+	if r.GRPC.MaxSendMsgSize == 0 {
+		r.GRPC.MaxSendMsgSize = defaults.DefaultMaxSendMsgSize
+	}
 	if r.Debug.Address == "" {
 		r.Debug.Address = filepath.Join(r.stateDir, debugSockFile)
-	}
-	if r.Debug.Level == "" {
-		r.Debug.Level = "info"
 	}
 	if r.OOMScore == 0 {
 		r.OOMScore = -999

@@ -3,42 +3,53 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:6978a38432a017763a148afbc7ce6491734b54292af7d3e969d84d2e9dd242e2"
   name = "github.com/Azure/go-ansiterm"
   packages = [
     ".",
-    "winterm"
+    "winterm",
   ]
+  pruneopts = ""
   revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
 
 [[projects]]
   branch = "master"
+  digest = "1:0283be5389dd85ad0e7ae5d235e4d14f1c36a0c567d723ddf5a8119ad641d09e"
   name = "github.com/atotto/clipboard"
   packages = ["."]
-  revision = "bc5958e1c8339112fc3347a89f3c482f416a69d3"
+  pruneopts = ""
+  revision = "5e2c7bddca04488284428a201e4a15615f7a5074"
 
 [[projects]]
   branch = "master"
+  digest = "1:a531d4306004d18555634584ed10d996fe4f83c890d2af837af2217ab8a037e6"
   name = "github.com/docker/docker"
   packages = [
     "pkg/term",
-    "pkg/term/windows"
+    "pkg/term/windows",
   ]
-  revision = "c5e7537d2305c1855f95422f08ca844d05a17aa2"
+  pruneopts = ""
+  revision = "d080de7074a05a1534bf7e91d000a311885fa221"
 
 [[projects]]
+  digest = "1:f2cc92b78b2f3b76ab0f9daddddd28627bcfcc6cacf119029aa3850082d95079"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
-  revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
-  version = "v1.0.4"
+  pruneopts = ""
+  revision = "c155da19408a8799da419ed3eeb0cb5db0ad5dbc"
+  version = "v1.0.5"
 
 [[projects]]
+  digest = "1:4e3dde60e6be4a3fc63e7cbfb77ad061cbf412ac8e17f344bc71568785cd76e8"
   name = "github.com/urfave/cli"
   packages = ["."]
+  pruneopts = ""
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
   version = "v1.20.0"
 
 [[projects]]
   branch = "master"
+  digest = "1:e79c3d6b195477b429f017aaa02af135249bbdff31c9acbd8a93bb37a4ef7d3b"
   name = "golang.org/x/crypto"
   packages = [
     "cast5",
@@ -48,22 +59,31 @@
     "openpgp/errors",
     "openpgp/packet",
     "openpgp/s2k",
-    "ssh/terminal"
+    "ssh/terminal",
   ]
-  revision = "650f4a345ab4e5b245a3034b110ebc7299e68186"
+  pruneopts = ""
+  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
 
 [[projects]]
   branch = "master"
+  digest = "1:880f5ae3ffdd8741fe179f0f70b46df57fcdd746f3a0e9d0e189bb6a241535e4"
   name = "golang.org/x/sys"
   packages = [
     "unix",
-    "windows"
+    "windows",
   ]
-  revision = "37707fdb30a5b38865cfb95e5aab41707daec7fd"
+  pruneopts = ""
+  revision = "1b2967e3c290b7c545b3db0deeda16e9be4f98a2"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "8ebcf584ab96dd5ea61b394e06bb4165d4e25b3ff86ff8ee0744ca14af020b2e"
+  input-imports = [
+    "github.com/atotto/clipboard",
+    "github.com/docker/docker/pkg/term",
+    "github.com/sirupsen/logrus",
+    "github.com/urfave/cli",
+    "golang.org/x/crypto/openpgp",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -9,20 +9,13 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/container"
+	"github.com/docker/docker/daemon/images"
 	"github.com/docker/docker/errdefs"
 	"github.com/docker/docker/image"
-	"github.com/docker/docker/volume"
 	"github.com/docker/go-connections/nat"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
-
-var acceptedVolumeFilterTags = map[string]bool{
-	"dangling": true,
-	"name":     true,
-	"driver":   true,
-	"label":    true,
-}
 
 var acceptedPsFilterTags = map[string]bool{
 	"ancestor":  true,
@@ -182,6 +175,10 @@ func (daemon *Daemon) filterByNameIDMatches(view container.View, ctx *listContex
 
 // reduceContainers parses the user's filtering options and generates the list of containers to return based on a reducer.
 func (daemon *Daemon) reduceContainers(config *types.ContainerListOptions, reducer containerReducer) ([]*types.Container, error) {
+	if err := config.Filters.Validate(acceptedPsFilterTags); err != nil {
+		return nil, err
+	}
+
 	var (
 		view       = daemon.containersReplica.Snapshot()
 		containers = []*types.Container{}
@@ -235,7 +232,7 @@ func (daemon *Daemon) reducePsContainer(container *container.Snapshot, ctx *list
 
 	// release lock because size calculation is slow
 	if ctx.Size {
-		sizeRw, sizeRootFs := daemon.getSize(newC.ID)
+		sizeRw, sizeRootFs := daemon.imageService.GetContainerLayerSize(newC.ID)
 		newC.SizeRw = sizeRw
 		newC.SizeRootFs = sizeRootFs
 	}
@@ -245,10 +242,6 @@ func (daemon *Daemon) reducePsContainer(container *container.Snapshot, ctx *list
 // foldFilter generates the container filter based on the user's filtering options.
 func (daemon *Daemon) foldFilter(view container.View, config *types.ContainerListOptions) (*listContext, error) {
 	psFilters := config.Filters
-
-	if err := psFilters.Validate(acceptedPsFilterTags); err != nil {
-		return nil, err
-	}
 
 	var filtExited []int
 
@@ -323,17 +316,17 @@ func (daemon *Daemon) foldFilter(view container.View, config *types.ContainerLis
 	if psFilters.Contains("ancestor") {
 		ancestorFilter = true
 		psFilters.WalkValues("ancestor", func(ancestor string) error {
-			id, _, err := daemon.GetImageIDAndOS(ancestor)
+			img, err := daemon.imageService.GetImage(ancestor)
 			if err != nil {
 				logrus.Warnf("Error while looking up for image %v", ancestor)
 				return nil
 			}
-			if imagesFilter[id] {
+			if imagesFilter[img.ID()] {
 				// Already seen this ancestor, skip it
 				return nil
 			}
 			// Then walk down the graph and put the imageIds in imagesFilter
-			populateImageFilterByParents(imagesFilter, id, daemon.imageStore.Children)
+			populateImageFilterByParents(imagesFilter, img.ID(), daemon.imageService.Children)
 			return nil
 		})
 	}
@@ -591,98 +584,17 @@ func (daemon *Daemon) refreshImage(s *container.Snapshot, ctx *listContext) (*ty
 	c := s.Container
 	image := s.Image // keep the original ref if still valid (hasn't changed)
 	if image != s.ImageID {
-		id, _, err := daemon.GetImageIDAndOS(image)
-		if _, isDNE := err.(errImageDoesNotExist); err != nil && !isDNE {
+		img, err := daemon.imageService.GetImage(image)
+		if _, isDNE := err.(images.ErrImageDoesNotExist); err != nil && !isDNE {
 			return nil, err
 		}
-		if err != nil || id.String() != s.ImageID {
+		if err != nil || img.ImageID() != s.ImageID {
 			// ref changed, we need to use original ID
 			image = s.ImageID
 		}
 	}
 	c.Image = image
 	return &c, nil
-}
-
-// Volumes lists known volumes, using the filter to restrict the range
-// of volumes returned.
-func (daemon *Daemon) Volumes(filter string) ([]*types.Volume, []string, error) {
-	var (
-		volumesOut []*types.Volume
-	)
-	volFilters, err := filters.FromJSON(filter)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	if err := volFilters.Validate(acceptedVolumeFilterTags); err != nil {
-		return nil, nil, err
-	}
-
-	volumes, warnings, err := daemon.volumes.List()
-	if err != nil {
-		return nil, nil, err
-	}
-
-	filterVolumes, err := daemon.filterVolumes(volumes, volFilters)
-	if err != nil {
-		return nil, nil, err
-	}
-	for _, v := range filterVolumes {
-		apiV := volumeToAPIType(v)
-		if vv, ok := v.(interface {
-			CachedPath() string
-		}); ok {
-			apiV.Mountpoint = vv.CachedPath()
-		} else {
-			apiV.Mountpoint = v.Path()
-		}
-		volumesOut = append(volumesOut, apiV)
-	}
-	return volumesOut, warnings, nil
-}
-
-// filterVolumes filters volume list according to user specified filter
-// and returns user chosen volumes
-func (daemon *Daemon) filterVolumes(vols []volume.Volume, filter filters.Args) ([]volume.Volume, error) {
-	// if filter is empty, return original volume list
-	if filter.Len() == 0 {
-		return vols, nil
-	}
-
-	var retVols []volume.Volume
-	for _, vol := range vols {
-		if filter.Contains("name") {
-			if !filter.Match("name", vol.Name()) {
-				continue
-			}
-		}
-		if filter.Contains("driver") {
-			if !filter.ExactMatch("driver", vol.DriverName()) {
-				continue
-			}
-		}
-		if filter.Contains("label") {
-			v, ok := vol.(volume.DetailedVolume)
-			if !ok {
-				continue
-			}
-			if !filter.MatchKVList("label", v.Labels()) {
-				continue
-			}
-		}
-		retVols = append(retVols, vol)
-	}
-	danglingOnly := false
-	if filter.Contains("dangling") {
-		if filter.ExactMatch("dangling", "true") || filter.ExactMatch("dangling", "1") {
-			danglingOnly = true
-		} else if !filter.ExactMatch("dangling", "false") && !filter.ExactMatch("dangling", "0") {
-			return nil, invalidFilter{"dangling", filter.Get("dangling")}
-		}
-		retVols = daemon.volumes.FilterByUsed(retVols, !danglingOnly)
-	}
-	return retVols, nil
 }
 
 func populateImageFilterByParents(ancestorMap map[image.ID]bool, imageID image.ID, getChildren func(image.ID) []image.ID) {

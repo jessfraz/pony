@@ -54,6 +54,10 @@ func (rl *roLayer) TarStreamFrom(parent ChainID) (io.ReadCloser, error) {
 	return rl.layerStore.driver.Diff(rl.cacheID, parentCacheID)
 }
 
+func (rl *roLayer) CacheID() string {
+	return rl.cacheID
+}
+
 func (rl *roLayer) ChainID() ChainID {
 	return rl.chainID
 }
@@ -121,7 +125,7 @@ func (rl *roLayer) depth() int {
 	return rl.parent.depth() + 1
 }
 
-func storeLayer(tx MetadataTransaction, layer *roLayer) error {
+func storeLayer(tx *fileMetadataTransaction, layer *roLayer) error {
 	if err := tx.SetDiffID(layer.diffID); err != nil {
 		return err
 	}

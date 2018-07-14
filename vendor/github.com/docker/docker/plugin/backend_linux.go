@@ -3,6 +3,7 @@ package plugin // import "github.com/docker/docker/plugin"
 import (
 	"archive/tar"
 	"compress/gzip"
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -32,10 +33,10 @@ import (
 	"github.com/docker/docker/pkg/system"
 	"github.com/docker/docker/plugin/v2"
 	refstore "github.com/docker/docker/reference"
-	digest "github.com/opencontainers/go-digest"
+	"github.com/opencontainers/go-digest"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 )
 
 var acceptedPluginFilterTags = map[string]bool{
@@ -146,8 +147,13 @@ func (s *tempConfigStore) Get(d digest.Digest) ([]byte, error) {
 	return s.config, nil
 }
 
-func (s *tempConfigStore) RootFSAndOSFromConfig(c []byte) (*image.RootFS, string, error) {
+func (s *tempConfigStore) RootFSFromConfig(c []byte) (*image.RootFS, error) {
 	return configToRootFS(c)
+}
+
+func (s *tempConfigStore) PlatformFromConfig(c []byte) (*specs.Platform, error) {
+	// TODO: LCOW/Plugins. This will need revisiting. For now use the runtime OS
+	return &specs.Platform{OS: runtime.GOOS}, nil
 }
 
 func computePrivileges(c types.PluginConfig) types.PluginPrivileges {
@@ -534,8 +540,13 @@ func (s *pluginConfigStore) Get(d digest.Digest) ([]byte, error) {
 	return ioutil.ReadAll(rwc)
 }
 
-func (s *pluginConfigStore) RootFSAndOSFromConfig(c []byte) (*image.RootFS, string, error) {
+func (s *pluginConfigStore) RootFSFromConfig(c []byte) (*image.RootFS, error) {
 	return configToRootFS(c)
+}
+
+func (s *pluginConfigStore) PlatformFromConfig(c []byte) (*specs.Platform, error) {
+	// TODO: LCOW/Plugins. This will need revisiting. For now use the runtime OS
+	return &specs.Platform{OS: runtime.GOOS}, nil
 }
 
 type pluginLayerProvider struct {

@@ -51,22 +51,22 @@ func (daemon *Daemon) containerExport(container *container.Container) (arch io.R
 	if !system.IsOSSupported(container.OS) {
 		return nil, fmt.Errorf("cannot export %s: %s ", container.ID, system.ErrNotSupportedOperatingSystem)
 	}
-	rwlayer, err := daemon.layerStores[container.OS].GetRWLayer(container.ID)
+	rwlayer, err := daemon.imageService.GetLayerByID(container.ID, container.OS)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		if err != nil {
-			daemon.layerStores[container.OS].ReleaseRWLayer(rwlayer)
+			daemon.imageService.ReleaseLayer(rwlayer, container.OS)
 		}
 	}()
 
-	_, err = rwlayer.Mount(container.GetMountLabel())
+	basefs, err := rwlayer.Mount(container.GetMountLabel())
 	if err != nil {
 		return nil, err
 	}
 
-	archive, err := archivePath(container.BaseFS, container.BaseFS.Path(), &archive.TarOptions{
+	archive, err := archivePath(basefs, basefs.Path(), &archive.TarOptions{
 		Compression: archive.Uncompressed,
 		UIDMaps:     daemon.idMappings.UIDs(),
 		GIDMaps:     daemon.idMappings.GIDs(),
@@ -78,7 +78,7 @@ func (daemon *Daemon) containerExport(container *container.Container) (arch io.R
 	arch = ioutils.NewReadCloserWrapper(archive, func() error {
 		err := archive.Close()
 		rwlayer.Unmount()
-		daemon.layerStores[container.OS].ReleaseRWLayer(rwlayer)
+		daemon.imageService.ReleaseLayer(rwlayer, container.OS)
 		return err
 	})
 	daemon.LogContainerEvent(container, "export")

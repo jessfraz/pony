@@ -24,6 +24,7 @@ import (
 	"github.com/docker/docker/pkg/streamformatter"
 	"github.com/docker/docker/pkg/system"
 	"github.com/docker/docker/pkg/urlutil"
+	specs "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
 
@@ -72,8 +73,12 @@ type copier struct {
 	source      builder.Source
 	pathCache   pathCache
 	download    sourceDownloader
+	platform    *specs.Platform
+	// for cleanup. TODO: having copier.cleanup() is error prone and hard to
+	// follow. Code calling performCopy should manage the lifecycle of its params.
+	// Copier should take override source as input, not imageMount.
+	activeLayer builder.RWLayer
 	tmpPaths    []string
-	platform    string
 }
 
 func copierFromDispatchRequest(req dispatchRequest, download sourceDownloader, imageSource *imageMount) copier {
@@ -82,7 +87,7 @@ func copierFromDispatchRequest(req dispatchRequest, download sourceDownloader, i
 		pathCache:   req.builder.pathCache,
 		download:    download,
 		imageSource: imageSource,
-		platform:    req.builder.options.Platform,
+		platform:    req.builder.platform,
 	}
 }
 
@@ -91,8 +96,14 @@ func (o *copier) createCopyInstruction(args []string, cmdName string) (copyInstr
 	last := len(args) - 1
 
 	// Work in platform-specific filepath semantics
-	inst.dest = fromSlash(args[last], o.platform)
-	separator := string(separator(o.platform))
+	// TODO: This OS switch for paths is NOT correct and should not be supported.
+	// Maintained for backwards compatibility
+	pathOS := runtime.GOOS
+	if o.platform != nil {
+		pathOS = o.platform.OS
+	}
+	inst.dest = fromSlash(args[last], pathOS)
+	separator := string(separator(pathOS))
 	infos, err := o.getCopyInfosForSourcePaths(args[0:last], inst.dest)
 	if err != nil {
 		return inst, errors.Wrapf(err, "%s failed", cmdName)
@@ -155,6 +166,10 @@ func (o *copier) Cleanup() {
 		os.RemoveAll(path)
 	}
 	o.tmpPaths = []string{}
+	if o.activeLayer != nil {
+		o.activeLayer.Release()
+		o.activeLayer = nil
+	}
 }
 
 // TODO: allowWildcards can probably be removed by refactoring this function further.
@@ -164,11 +179,19 @@ func (o *copier) calcCopyInfo(origPath string, allowWildcards bool) ([]copyInfo,
 	// TODO: do this when creating copier. Requires validateCopySourcePath
 	// (and other below) to be aware of the difference sources. Why is it only
 	// done on image Source?
-	if imageSource != nil {
+	if imageSource != nil && o.activeLayer == nil {
+		// this needs to be protected against repeated calls as wildcard copy
+		// will call it multiple times for a single COPY
 		var err error
-		o.source, err = imageSource.Source()
+		rwLayer, err := imageSource.NewRWLayer()
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to copy from %s", imageSource.ImageID())
+			return nil, err
+		}
+		o.activeLayer = rwLayer
+
+		o.source, err = remotecontext.NewLazySource(rwLayer.Root())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to create context for copy from %s", rwLayer.Root().Path())
 		}
 	}
 

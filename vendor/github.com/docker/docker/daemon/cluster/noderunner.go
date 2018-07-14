@@ -1,6 +1,7 @@
 package cluster // import "github.com/docker/docker/daemon/cluster"
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"runtime"
@@ -15,7 +16,6 @@ import (
 	swarmnode "github.com/docker/swarmkit/node"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -120,12 +120,20 @@ func (n *nodeRunner) start(conf nodeStartConfig) error {
 		JoinAddr:           joinAddr,
 		StateDir:           n.cluster.root,
 		JoinToken:          conf.joinToken,
-		Executor:           container.NewExecutor(n.cluster.config.Backend, n.cluster.config.PluginBackend),
-		HeartbeatTick:      1,
-		ElectionTick:       3,
-		UnlockKey:          conf.lockKey,
-		AutoLockManagers:   conf.autolock,
-		PluginGetter:       n.cluster.config.Backend.PluginGetter(),
+		Executor: container.NewExecutor(
+			n.cluster.config.Backend,
+			n.cluster.config.PluginBackend,
+			n.cluster.config.ImageBackend,
+			n.cluster.config.VolumeBackend,
+		),
+		HeartbeatTick: n.cluster.config.RaftHeartbeatTick,
+		// Recommended value in etcd/raft is 10 x (HeartbeatTick).
+		// Lower values were seen to have caused instability because of
+		// frequent leader elections when running on flakey networks.
+		ElectionTick:     n.cluster.config.RaftElectionTick,
+		UnlockKey:        conf.lockKey,
+		AutoLockManagers: conf.autolock,
+		PluginGetter:     n.cluster.config.Backend.PluginGetter(),
 	}
 	if conf.availability != "" {
 		avail, ok := swarmapi.NodeSpec_Availability_value[strings.ToUpper(string(conf.availability))]

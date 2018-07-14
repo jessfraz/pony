@@ -21,7 +21,8 @@ import (
 	"github.com/docker/docker/daemon/logger"
 	"github.com/docker/docker/daemon/logger/loggerutils"
 	"github.com/docker/docker/dockerversion"
-	"github.com/stretchr/testify/assert"
+	"gotest.tools/assert"
+	is "gotest.tools/assert/cmp"
 )
 
 const (
@@ -66,13 +67,11 @@ func TestNewAWSLogsClientUserAgentHandler(t *testing.T) {
 	}
 
 	client, err := newAWSLogsClient(info)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
+
 	realClient, ok := client.(*cloudwatchlogs.CloudWatchLogs)
-	if !ok {
-		t.Fatal("Could not cast client to cloudwatchlogs.CloudWatchLogs")
-	}
+	assert.Check(t, ok, "Could not cast client to cloudwatchlogs.CloudWatchLogs")
+
 	buildHandlerList := realClient.Handlers.Build
 	request := &request.Request{
 		HTTPRequest: &http.Request{
@@ -89,6 +88,26 @@ func TestNewAWSLogsClientUserAgentHandler(t *testing.T) {
 	}
 }
 
+func TestNewAWSLogsClientAWSLogsEndpoint(t *testing.T) {
+	endpoint := "mock-endpoint"
+	info := logger.Info{
+		Config: map[string]string{
+			regionKey:   "us-east-1",
+			endpointKey: endpoint,
+		},
+	}
+
+	client, err := newAWSLogsClient(info)
+	assert.NilError(t, err)
+
+	realClient, ok := client.(*cloudwatchlogs.CloudWatchLogs)
+	assert.Check(t, ok, "Could not cast client to cloudwatchlogs.CloudWatchLogs")
+
+	endpointWithScheme := realClient.Endpoint
+	expectedEndpointWithScheme := "https://" + endpoint
+	assert.Equal(t, endpointWithScheme, expectedEndpointWithScheme, "Wrong endpoint")
+}
+
 func TestNewAWSLogsClientRegionDetect(t *testing.T) {
 	info := logger.Info{
 		Config: map[string]string{},
@@ -103,9 +122,7 @@ func TestNewAWSLogsClientRegionDetect(t *testing.T) {
 	}
 
 	_, err := newAWSLogsClient(info)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NilError(t, err)
 }
 
 func TestCreateSuccess(t *testing.T) {
@@ -195,11 +212,93 @@ func TestCreateAlreadyExists(t *testing.T) {
 
 	err := stream.create()
 
-	if err != nil {
-		t.Fatal("Expected nil err")
+	assert.NilError(t, err)
+}
+
+func TestLogClosed(t *testing.T) {
+	mockClient := newMockClient()
+	stream := &logStream{
+		client: mockClient,
+		closed: true,
+	}
+	err := stream.Log(&logger.Message{})
+	if err == nil {
+		t.Fatal("Expected non-nil error")
 	}
 }
 
+func TestLogBlocking(t *testing.T) {
+	mockClient := newMockClient()
+	stream := &logStream{
+		client:   mockClient,
+		messages: make(chan *logger.Message),
+	}
+
+	errorCh := make(chan error, 1)
+	started := make(chan bool)
+	go func() {
+		started <- true
+		err := stream.Log(&logger.Message{})
+		errorCh <- err
+	}()
+	<-started
+	select {
+	case err := <-errorCh:
+		t.Fatal("Expected stream.Log to block: ", err)
+	default:
+		break
+	}
+	select {
+	case <-stream.messages:
+		break
+	default:
+		t.Fatal("Expected to be able to read from stream.messages but was unable to")
+	}
+	select {
+	case err := <-errorCh:
+		assert.NilError(t, err)
+
+	case <-time.After(30 * time.Second):
+		t.Fatal("timed out waiting for read")
+	}
+}
+
+func TestLogNonBlockingBufferEmpty(t *testing.T) {
+	mockClient := newMockClient()
+	stream := &logStream{
+		client:         mockClient,
+		messages:       make(chan *logger.Message, 1),
+		logNonBlocking: true,
+	}
+	err := stream.Log(&logger.Message{})
+	assert.NilError(t, err)
+}
+
+func TestLogNonBlockingBufferFull(t *testing.T) {
+	mockClient := newMockClient()
+	stream := &logStream{
+		client:         mockClient,
+		messages:       make(chan *logger.Message, 1),
+		logNonBlocking: true,
+	}
+	stream.messages <- &logger.Message{}
+	errorCh := make(chan error)
+	started := make(chan bool)
+	go func() {
+		started <- true
+		err := stream.Log(&logger.Message{})
+		errorCh <- err
+	}()
+	<-started
+	select {
+	case err := <-errorCh:
+		if err == nil {
+			t.Fatal("Expected non-nil error")
+		}
+	case <-time.After(30 * time.Second):
+		t.Fatal("Expected Log call to not block")
+	}
+}
 func TestPublishBatchSuccess(t *testing.T) {
 	mockClient := newMockClient()
 	stream := &logStream{
@@ -409,8 +508,9 @@ func TestCollectBatchSimple(t *testing.T) {
 			C: ticks,
 		}
 	}
-
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline),
@@ -453,7 +553,9 @@ func TestCollectBatchTicker(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline + " 1"),
@@ -525,7 +627,9 @@ func TestCollectBatchMultilinePattern(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline),
@@ -544,17 +648,17 @@ func TestCollectBatchMultilinePattern(t *testing.T) {
 
 	// Verify single multiline event
 	argument := <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 1, len(argument.LogEvents), "Expected single multiline event")
-	assert.Equal(t, logline+"\n"+logline+"\n", *argument.LogEvents[0].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(1, len(argument.LogEvents)), "Expected single multiline event")
+	assert.Check(t, is.Equal(logline+"\n"+logline+"\n", *argument.LogEvents[0].Message), "Received incorrect multiline message")
 
 	stream.Close()
 
 	// Verify single event
 	argument = <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 1, len(argument.LogEvents), "Expected single multiline event")
-	assert.Equal(t, "xxxx "+logline+"\n", *argument.LogEvents[0].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(1, len(argument.LogEvents)), "Expected single multiline event")
+	assert.Check(t, is.Equal("xxxx "+logline+"\n", *argument.LogEvents[0].Message), "Received incorrect multiline message")
 }
 
 func BenchmarkCollectBatch(b *testing.B) {
@@ -579,7 +683,9 @@ func BenchmarkCollectBatch(b *testing.B) {
 			}
 		}
 
-		go stream.collectBatch()
+		d := make(chan bool)
+		close(d)
+		go stream.collectBatch(d)
 		stream.logGenerator(10, 100)
 		ticks <- time.Time{}
 		stream.Close()
@@ -609,7 +715,9 @@ func BenchmarkCollectBatchMultilinePattern(b *testing.B) {
 				C: ticks,
 			}
 		}
-		go stream.collectBatch()
+		d := make(chan bool)
+		close(d)
+		go stream.collectBatch(d)
 		stream.logGenerator(10, 100)
 		ticks <- time.Time{}
 		stream.Close()
@@ -639,7 +747,9 @@ func TestCollectBatchMultilinePatternMaxEventAge(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline),
@@ -657,9 +767,9 @@ func TestCollectBatchMultilinePatternMaxEventAge(t *testing.T) {
 
 	// Verify single multiline event is flushed after maximum event buffer age (batchPublishFrequency)
 	argument := <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 1, len(argument.LogEvents), "Expected single multiline event")
-	assert.Equal(t, logline+"\n"+logline+"\n", *argument.LogEvents[0].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(1, len(argument.LogEvents)), "Expected single multiline event")
+	assert.Check(t, is.Equal(logline+"\n"+logline+"\n", *argument.LogEvents[0].Message), "Received incorrect multiline message")
 
 	// Log an event 1 second later
 	stream.Log(&logger.Message{
@@ -672,9 +782,9 @@ func TestCollectBatchMultilinePatternMaxEventAge(t *testing.T) {
 
 	// Verify the event buffer is truly flushed - we should only receive a single event
 	argument = <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 1, len(argument.LogEvents), "Expected single multiline event")
-	assert.Equal(t, logline+"\n", *argument.LogEvents[0].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(1, len(argument.LogEvents)), "Expected single multiline event")
+	assert.Check(t, is.Equal(logline+"\n", *argument.LogEvents[0].Message), "Received incorrect multiline message")
 	stream.Close()
 }
 
@@ -701,7 +811,9 @@ func TestCollectBatchMultilinePatternNegativeEventAge(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline),
@@ -719,9 +831,9 @@ func TestCollectBatchMultilinePatternNegativeEventAge(t *testing.T) {
 
 	// Verify single multiline event is flushed with a negative event buffer age
 	argument := <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 1, len(argument.LogEvents), "Expected single multiline event")
-	assert.Equal(t, logline+"\n"+logline+"\n", *argument.LogEvents[0].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(1, len(argument.LogEvents)), "Expected single multiline event")
+	assert.Check(t, is.Equal(logline+"\n"+logline+"\n", *argument.LogEvents[0].Message), "Received incorrect multiline message")
 
 	stream.Close()
 }
@@ -749,7 +861,9 @@ func TestCollectBatchMultilinePatternMaxEventSize(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	// Log max event size
 	longline := strings.Repeat("A", maximumBytesPerEvent)
@@ -772,10 +886,10 @@ func TestCollectBatchMultilinePatternMaxEventSize(t *testing.T) {
 	// We expect a maximum sized event with no new line characters and a
 	// second short event with a new line character at the end
 	argument := <-mockClient.putLogEventsArgument
-	assert.NotNil(t, argument, "Expected non-nil PutLogEventsInput")
-	assert.Equal(t, 2, len(argument.LogEvents), "Expected two events")
-	assert.Equal(t, longline, *argument.LogEvents[0].Message, "Received incorrect multiline message")
-	assert.Equal(t, shortline+"\n", *argument.LogEvents[1].Message, "Received incorrect multiline message")
+	assert.Check(t, argument != nil, "Expected non-nil PutLogEventsInput")
+	assert.Check(t, is.Equal(2, len(argument.LogEvents)), "Expected two events")
+	assert.Check(t, is.Equal(longline, *argument.LogEvents[0].Message), "Received incorrect multiline message")
+	assert.Check(t, is.Equal(shortline+"\n", *argument.LogEvents[1].Message), "Received incorrect multiline message")
 	stream.Close()
 }
 
@@ -800,7 +914,9 @@ func TestCollectBatchClose(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	stream.Log(&logger.Message{
 		Line:      []byte(logline),
@@ -843,7 +959,9 @@ func TestCollectBatchLineSplit(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	longline := strings.Repeat("A", maximumBytesPerEvent)
 	stream.Log(&logger.Message{
@@ -890,7 +1008,9 @@ func TestCollectBatchMaxEvents(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	line := "A"
 	for i := 0; i <= maximumLogEventsPerPut; i++ {
@@ -945,7 +1065,9 @@ func TestCollectBatchMaxTotalBytes(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
 	numPayloads := maximumBytesPerPut / (maximumBytesPerEvent + perEventBytes)
 	// maxline is the maximum line that could be submitted after
@@ -1024,10 +1146,12 @@ func TestCollectBatchWithDuplicateTimestamps(t *testing.T) {
 		}
 	}
 
-	go stream.collectBatch()
+	d := make(chan bool)
+	close(d)
+	go stream.collectBatch(d)
 
+	var expectedEvents []*cloudwatchlogs.InputLogEvent
 	times := maximumLogEventsPerPut
-	expectedEvents := []*cloudwatchlogs.InputLogEvent{}
 	timestamp := time.Now()
 	for i := 0; i < times; i++ {
 		line := fmt.Sprintf("%d", i)
@@ -1069,8 +1193,8 @@ func TestParseLogOptionsMultilinePattern(t *testing.T) {
 	}
 
 	multilinePattern, err := parseMultilineOptions(info)
-	assert.Nil(t, err, "Received unexpected error")
-	assert.True(t, multilinePattern.MatchString("xxxx"), "No multiline pattern match found")
+	assert.Check(t, err, "Received unexpected error")
+	assert.Check(t, multilinePattern.MatchString("xxxx"), "No multiline pattern match found")
 }
 
 func TestParseLogOptionsDatetimeFormat(t *testing.T) {
@@ -1094,8 +1218,8 @@ func TestParseLogOptionsDatetimeFormat(t *testing.T) {
 				},
 			}
 			multilinePattern, err := parseMultilineOptions(info)
-			assert.Nil(t, err, "Received unexpected error")
-			assert.True(t, multilinePattern.MatchString(dt.match), "No multiline pattern match found")
+			assert.Check(t, err, "Received unexpected error")
+			assert.Check(t, multilinePattern.MatchString(dt.match), "No multiline pattern match found")
 		})
 	}
 }
@@ -1109,8 +1233,8 @@ func TestValidateLogOptionsDatetimeFormatAndMultilinePattern(t *testing.T) {
 	conflictingLogOptionsError := "you cannot configure log opt 'awslogs-datetime-format' and 'awslogs-multiline-pattern' at the same time"
 
 	err := ValidateLogOpt(cfg)
-	assert.NotNil(t, err, "Expected an error")
-	assert.Equal(t, err.Error(), conflictingLogOptionsError, "Received invalid error")
+	assert.Check(t, err != nil, "Expected an error")
+	assert.Check(t, is.Equal(err.Error(), conflictingLogOptionsError), "Received invalid error")
 }
 
 func TestCreateTagSuccess(t *testing.T) {
@@ -1133,19 +1257,12 @@ func TestCreateTagSuccess(t *testing.T) {
 
 	err := stream.create()
 
-	if err != nil {
-		t.Errorf("Received unexpected err: %v\n", err)
-	}
+	assert.NilError(t, err)
 	argument := <-mockClient.createLogStreamArgument
 
 	if *argument.LogStreamName != "test-container/container-abcdefghijklmnopqrstuvwxyz01234567890" {
 		t.Errorf("Expected LogStreamName to be %s", "test-container/container-abcdefghijklmnopqrstuvwxyz01234567890")
 	}
-}
-
-func TestIsSizedLogger(t *testing.T) {
-	awslogs := &logStream{}
-	assert.Implements(t, (*logger.SizedLogger)(nil), awslogs, "awslogs should implement SizedLogger")
 }
 
 func BenchmarkUnwrapEvents(b *testing.B) {
@@ -1157,11 +1274,10 @@ func BenchmarkUnwrapEvents(b *testing.B) {
 		}
 	}
 
-	as := assert.New(b)
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		res := unwrapEvents(events)
-		as.Len(res, maximumLogEventsPerPut)
+		assert.Check(b, is.Len(res, maximumLogEventsPerPut))
 	}
 }
 
@@ -1194,15 +1310,15 @@ func TestNewAWSLogsClientCredentialEndpointDetect(t *testing.T) {
 	info.Config["awslogs-credentials-endpoint"] = "/creds"
 
 	c, err := newAWSLogsClient(info)
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	client := c.(*cloudwatchlogs.CloudWatchLogs)
 
 	creds, err := client.Config.Credentials.Get()
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
-	assert.Equal(t, expectedAccessKeyID, creds.AccessKeyID)
-	assert.Equal(t, expectedSecretAccessKey, creds.SecretAccessKey)
+	assert.Check(t, is.Equal(expectedAccessKeyID, creds.AccessKeyID))
+	assert.Check(t, is.Equal(expectedSecretAccessKey, creds.SecretAccessKey))
 }
 
 func TestNewAWSLogsClientCredentialEnvironmentVariable(t *testing.T) {
@@ -1224,16 +1340,15 @@ func TestNewAWSLogsClientCredentialEnvironmentVariable(t *testing.T) {
 	}
 
 	c, err := newAWSLogsClient(info)
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	client := c.(*cloudwatchlogs.CloudWatchLogs)
 
 	creds, err := client.Config.Credentials.Get()
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
-	assert.Equal(t, expectedAccessKeyID, creds.AccessKeyID)
-	assert.Equal(t, expectedSecretAccessKey, creds.SecretAccessKey)
-
+	assert.Check(t, is.Equal(expectedAccessKeyID, creds.AccessKeyID))
+	assert.Check(t, is.Equal(expectedSecretAccessKey, creds.SecretAccessKey))
 }
 
 func TestNewAWSLogsClientCredentialSharedFile(t *testing.T) {
@@ -1253,13 +1368,13 @@ func TestNewAWSLogsClientCredentialSharedFile(t *testing.T) {
 
 	tmpfile, err := ioutil.TempFile("", "example")
 	defer os.Remove(tmpfile.Name()) // clean up
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	_, err = tmpfile.Write(content)
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	err = tmpfile.Close()
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	os.Unsetenv("AWS_ACCESS_KEY_ID")
 	os.Unsetenv("AWS_SECRET_ACCESS_KEY")
@@ -1272,13 +1387,13 @@ func TestNewAWSLogsClientCredentialSharedFile(t *testing.T) {
 	}
 
 	c, err := newAWSLogsClient(info)
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
 	client := c.(*cloudwatchlogs.CloudWatchLogs)
 
 	creds, err := client.Config.Credentials.Get()
-	assert.NoError(t, err)
+	assert.Check(t, err)
 
-	assert.Equal(t, expectedAccessKeyID, creds.AccessKeyID)
-	assert.Equal(t, expectedSecretAccessKey, creds.SecretAccessKey)
+	assert.Check(t, is.Equal(expectedAccessKeyID, creds.AccessKeyID))
+	assert.Check(t, is.Equal(expectedSecretAccessKey, creds.SecretAccessKey))
 }

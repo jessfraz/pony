@@ -27,6 +27,7 @@ type Store interface {
 	Children(id ID) []ID
 	Map() map[ID]*Image
 	Heads() map[ID]*Image
+	Len() int
 }
 
 // LayerGetReleaser is a minimal interface for getting and releasing images.
@@ -75,7 +76,8 @@ func (is *store) restore() error {
 		var l layer.Layer
 		if chainID := img.RootFS.ChainID(); chainID != "" {
 			if !system.IsOSSupported(img.OperatingSystem()) {
-				return system.ErrNotSupportedOperatingSystem
+				logrus.Errorf("not restoring image with unsupported operating system %v, %v, %s", dgst, chainID, img.OperatingSystem())
+				return nil
 			}
 			l, err = is.lss[img.OperatingSystem()].Get(chainID)
 			if err != nil {
@@ -335,4 +337,10 @@ func (is *store) imagesMap(all bool) map[ID]*Image {
 		images[id] = img
 	}
 	return images
+}
+
+func (is *store) Len() int {
+	is.RLock()
+	defer is.RUnlock()
+	return len(is.images)
 }

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/containerd/containerd/linux"
+	"github.com/containerd/containerd/runtime/linux"
 	"github.com/docker/docker/cmd/dockerd/hack"
 	"github.com/docker/docker/daemon"
 	"github.com/docker/docker/libcontainerd"
@@ -48,6 +48,8 @@ func (cli *DaemonCli) getPlatformRemoteOptions() ([]libcontainerd.RemoteOption, 
 	}
 	if cli.Config.Debug {
 		opts = append(opts, libcontainerd.WithLogLevel("debug"))
+	} else if cli.Config.LogLevel != "" {
+		opts = append(opts, libcontainerd.WithLogLevel(cli.Config.LogLevel))
 	}
 	if cli.Config.ContainerdAddr != "" {
 		opts = append(opts, libcontainerd.WithRemoteAddr(cli.Config.ContainerdAddr))
@@ -104,17 +106,13 @@ func allocateDaemonPort(addr string) error {
 	return nil
 }
 
-// notifyShutdown is called after the daemon shuts down but before the process exits.
-func notifyShutdown(err error) {
-}
-
 func wrapListeners(proto string, ls []net.Listener) []net.Listener {
 	switch proto {
 	case "unix":
-		ls[0] = &hack.MalformedHostHeaderOverride{ls[0]}
+		ls[0] = &hack.MalformedHostHeaderOverride{Listener: ls[0]}
 	case "fd":
 		for i := range ls {
-			ls[i] = &hack.MalformedHostHeaderOverride{ls[i]}
+			ls[i] = &hack.MalformedHostHeaderOverride{Listener: ls[i]}
 		}
 	}
 	return ls

@@ -13,7 +13,7 @@ import (
 	"github.com/docker/docker/daemon/logger"
 	"github.com/docker/docker/daemon/logger/jsonfilelog/jsonlog"
 	"github.com/docker/docker/daemon/logger/loggerutils"
-	units "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -49,6 +49,9 @@ func New(info logger.Info) (logger.Logger, error) {
 		if err != nil {
 			return nil, err
 		}
+		if capval <= 0 {
+			return nil, fmt.Errorf("max-size should be a positive numbler")
+		}
 	}
 	var maxFiles = 1
 	if maxFileString, ok := info.Config["max-file"]; ok {
@@ -59,6 +62,18 @@ func New(info logger.Info) (logger.Logger, error) {
 		}
 		if maxFiles < 1 {
 			return nil, fmt.Errorf("max-file cannot be less than 1")
+		}
+	}
+
+	var compress bool
+	if compressString, ok := info.Config["compress"]; ok {
+		var err error
+		compress, err = strconv.ParseBool(compressString)
+		if err != nil {
+			return nil, err
+		}
+		if compress && (maxFiles == 1 || capval == -1) {
+			return nil, fmt.Errorf("compress cannot be true when max-file is less than 2 or max-size is not set")
 		}
 	}
 
@@ -95,7 +110,7 @@ func New(info logger.Info) (logger.Logger, error) {
 		return b, nil
 	}
 
-	writer, err := loggerutils.NewLogFile(info.LogPath, capval, maxFiles, marshalFunc, decodeFunc)
+	writer, err := loggerutils.NewLogFile(info.LogPath, capval, maxFiles, compress, marshalFunc, decodeFunc, 0640)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +132,7 @@ func (l *JSONFileLogger) Log(msg *logger.Message) error {
 
 func marshalMessage(msg *logger.Message, extra json.RawMessage, buf *bytes.Buffer) error {
 	logLine := msg.Line
-	if !msg.Partial {
+	if msg.PLogMetaData == nil || (msg.PLogMetaData != nil && msg.PLogMetaData.Last) {
 		logLine = append(msg.Line, '\n')
 	}
 	err := (&jsonlog.JSONLogs{
@@ -139,6 +154,7 @@ func ValidateLogOpt(cfg map[string]string) error {
 		switch key {
 		case "max-file":
 		case "max-size":
+		case "compress":
 		case "labels":
 		case "env":
 		case "env-regex":
@@ -148,11 +164,6 @@ func ValidateLogOpt(cfg map[string]string) error {
 		}
 	}
 	return nil
-}
-
-// LogPath returns the location the given json logger logs to.
-func (l *JSONFileLogger) LogPath() string {
-	return l.writer.LogPath()
 }
 
 // Close closes underlying file and signals all readers to stop.

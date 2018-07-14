@@ -10,10 +10,7 @@ import (
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/errdefs"
-	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/system"
-	"github.com/docker/docker/volume"
-	volumestore "github.com/docker/docker/volume/store"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
@@ -121,12 +118,11 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 	// When container creation fails and `RWLayer` has not been created yet, we
 	// do not call `ReleaseRWLayer`
 	if container.RWLayer != nil {
-		metadata, err := daemon.layerStores[container.OS].ReleaseRWLayer(container.RWLayer)
-		layer.LogReleaseMetadata(metadata)
-		if err != nil && err != layer.ErrMountDoesNotExist && !os.IsNotExist(errors.Cause(err)) {
-			e := errors.Wrapf(err, "driver %q failed to remove root filesystem for %s", daemon.GraphDriverName(container.OS), container.ID)
-			container.SetRemovalError(e)
-			return e
+		err := daemon.imageService.ReleaseLayer(container.RWLayer, container.OS)
+		if err != nil {
+			err = errors.Wrapf(err, "container %s", container.ID)
+			container.SetRemovalError(err)
+			return err
 		}
 		container.RWLayer = nil
 	}
@@ -152,37 +148,5 @@ func (daemon *Daemon) cleanupContainer(container *container.Container, forceRemo
 	stateCtr.del(container.ID)
 
 	daemon.LogContainerEvent(container, "destroy")
-	return nil
-}
-
-// VolumeRm removes the volume with the given name.
-// If the volume is referenced by a container it is not removed
-// This is called directly from the Engine API
-func (daemon *Daemon) VolumeRm(name string, force bool) error {
-	v, err := daemon.volumes.Get(name)
-	if err != nil {
-		if force && volumestore.IsNotExist(err) {
-			return nil
-		}
-		return err
-	}
-
-	err = daemon.volumeRm(v)
-	if err != nil && volumestore.IsInUse(err) {
-		return errdefs.Conflict(err)
-	}
-
-	if err == nil || force {
-		daemon.volumes.Purge(name)
-		return nil
-	}
-	return err
-}
-
-func (daemon *Daemon) volumeRm(v volume.Volume) error {
-	if err := daemon.volumes.Remove(v); err != nil {
-		return errors.Wrap(err, "unable to remove volume")
-	}
-	daemon.LogVolumeEvent(v.Name(), "destroy", map[string]string{"driver": v.DriverName()})
 	return nil
 }

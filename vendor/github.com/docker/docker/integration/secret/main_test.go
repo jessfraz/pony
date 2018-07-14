@@ -1,4 +1,4 @@
-package secret
+package secret // import "github.com/docker/docker/integration/secret"
 
 import (
 	"fmt"
@@ -9,8 +9,6 @@ import (
 )
 
 var testEnv *environment.Execution
-
-const dockerdBinary = "dockerd"
 
 func TestMain(m *testing.M) {
 	var err error

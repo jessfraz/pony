@@ -1,18 +1,21 @@
-// +build linux freebsd
+// +build !windows
 
 package container // import "github.com/docker/docker/container"
 
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	"github.com/containerd/continuity/fs"
 	"github.com/docker/docker/api/types"
 	containertypes "github.com/docker/docker/api/types/container"
 	mounttypes "github.com/docker/docker/api/types/mount"
+	swarmtypes "github.com/docker/docker/api/types/swarm"
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/docker/volume"
+	volumemounts "github.com/docker/docker/volume/mounts"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -20,7 +23,8 @@ import (
 )
 
 const (
-	// DefaultStopTimeout is the timeout (in seconds) for the syscall signal used to stop a container.
+	// DefaultStopTimeout sets the default time, in seconds, to wait
+	// for the graceful container stop before forcefully terminating it.
 	DefaultStopTimeout = 10
 
 	containerSecretMountPath = "/run/secrets"
@@ -59,7 +63,7 @@ func (container *Container) BuildHostnameFile() error {
 func (container *Container) NetworkMounts() []Mount {
 	var mounts []Mount
 	shared := container.HostConfig.NetworkMode.IsContainer()
-	parser := volume.NewParser(container.OS)
+	parser := volumemounts.NewParser(container.OS)
 	if container.ResolvConfPath != "" {
 		if _, err := os.Stat(container.ResolvConfPath); err != nil {
 			logrus.Warnf("ResolvConfPath set to %q, but can't stat this filename (err = %v); skipping", container.ResolvConfPath, err)
@@ -124,7 +128,7 @@ func (container *Container) CopyImagePathContent(v volume.Volume, destination st
 		return err
 	}
 
-	if _, err = ioutil.ReadDir(rootfs); err != nil {
+	if _, err := os.Stat(rootfs); err != nil {
 		if os.IsNotExist(err) {
 			return nil
 		}
@@ -196,7 +200,7 @@ func (container *Container) UnmountIpcMount(unmount func(pth string) error) erro
 // IpcMounts returns the list of IPC mounts
 func (container *Container) IpcMounts() []Mount {
 	var mounts []Mount
-	parser := volume.NewParser(container.OS)
+	parser := volumemounts.NewParser(container.OS)
 
 	if container.HasMountFor("/dev/shm") {
 		return mounts
@@ -233,6 +237,17 @@ func (container *Container) SecretMounts() ([]Mount, error) {
 			Writable:    false,
 		})
 	}
+	for _, r := range container.ConfigReferences {
+		fPath, err := container.ConfigFilePath(*r)
+		if err != nil {
+			return nil, err
+		}
+		mounts = append(mounts, Mount{
+			Source:      fPath,
+			Destination: r.File.Name,
+			Writable:    false,
+		})
+	}
 
 	return mounts, nil
 }
@@ -251,27 +266,6 @@ func (container *Container) UnmountSecrets() error {
 	}
 
 	return mount.RecursiveUnmount(p)
-}
-
-// ConfigMounts returns the mounts for configs.
-func (container *Container) ConfigMounts() ([]Mount, error) {
-	var mounts []Mount
-	for _, configRef := range container.ConfigReferences {
-		if configRef.File == nil {
-			continue
-		}
-		src, err := container.ConfigFilePath(*configRef)
-		if err != nil {
-			return nil, err
-		}
-		mounts = append(mounts, Mount{
-			Source:      src,
-			Destination: configRef.File.Name,
-			Writable:    false,
-		})
-	}
-
-	return mounts, nil
 }
 
 type conflictingUpdateOptions string
@@ -387,7 +381,7 @@ func (container *Container) DetachAndUnmount(volumeEventLog func(name, action st
 	}
 
 	for _, mountPath := range mountPaths {
-		if err := detachMounted(mountPath); err != nil {
+		if err := mount.Unmount(mountPath); err != nil {
 			logrus.Warnf("%s unmountVolumes: Failed to do lazy umount fo volume '%s': %v", container.ID, mountPath, err)
 		}
 	}
@@ -410,7 +404,7 @@ func copyExistingContents(source, destination string) error {
 
 // TmpfsMounts returns the list of tmpfs mounts
 func (container *Container) TmpfsMounts() ([]Mount, error) {
-	parser := volume.NewParser(container.OS)
+	parser := volumemounts.NewParser(container.OS)
 	var mounts []Mount
 	for dest, data := range container.HostConfig.Tmpfs {
 		mounts = append(mounts, Mount{
@@ -456,4 +450,14 @@ func (container *Container) GetMountPoints() []types.MountPoint {
 		})
 	}
 	return mountPoints
+}
+
+// ConfigFilePath returns the path to the on-disk location of a config.
+// On unix, configs are always considered secret
+func (container *Container) ConfigFilePath(configRef swarmtypes.ConfigReference) (string, error) {
+	mounts, err := container.SecretMountPath()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(mounts, configRef.ConfigID), nil
 }

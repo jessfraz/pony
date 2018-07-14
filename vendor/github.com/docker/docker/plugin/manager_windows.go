@@ -19,12 +19,10 @@ func (pm *Manager) disable(p *v2.Plugin, c *controller) error {
 	return fmt.Errorf("Not implemented")
 }
 
-func (pm *Manager) restore(p *v2.Plugin) error {
+func (pm *Manager) restore(p *v2.Plugin, c *controller) error {
 	return fmt.Errorf("Not implemented")
 }
 
 // Shutdown plugins
 func (pm *Manager) Shutdown() {
 }
-
-func setupRoot(root string) error { return nil }

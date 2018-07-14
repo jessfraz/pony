@@ -1,20 +1,20 @@
-package system
+package system // import "github.com/docker/docker/integration/system"
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
-	"github.com/docker/docker/integration/internal/request"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/net/context"
+	"github.com/docker/docker/internal/test/request"
+	"gotest.tools/assert"
+	is "gotest.tools/assert/cmp"
 )
 
 func TestInfoAPI(t *testing.T) {
 	client := request.NewAPIClient(t)
 
 	info, err := client.Info(context.Background())
-	require.NoError(t, err)
+	assert.NilError(t, err)
 
 	// always shown fields
 	stringsToCheck := []string{
@@ -37,6 +37,6 @@ func TestInfoAPI(t *testing.T) {
 
 	out := fmt.Sprintf("%+v", info)
 	for _, linePrefix := range stringsToCheck {
-		assert.Contains(t, out, linePrefix)
+		assert.Check(t, is.Contains(out, linePrefix))
 	}
 }

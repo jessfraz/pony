@@ -33,7 +33,7 @@ import (
 	"github.com/docker/docker/pkg/parsers/kernel"
 	"github.com/docker/docker/pkg/sysinfo"
 	"github.com/docker/docker/runconfig"
-	"github.com/docker/docker/volume"
+	volumemounts "github.com/docker/docker/volume/mounts"
 	"github.com/docker/libnetwork"
 	nwconfig "github.com/docker/libnetwork/config"
 	"github.com/docker/libnetwork/drivers/bridge"
@@ -43,7 +43,7 @@ import (
 	lntypes "github.com/docker/libnetwork/types"
 	"github.com/opencontainers/runc/libcontainer/cgroups"
 	rsystem "github.com/opencontainers/runc/libcontainer/system"
-	specs "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/selinux/go-selinux/label"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -67,8 +67,8 @@ const (
 	// It's not kernel limit, we want this 4M limit to supply a reasonable functional container
 	linuxMinMemory = 4194304
 	// constants for remapped root settings
-	defaultIDSpecifier string = "default"
-	defaultRemappedID  string = "dockremap"
+	defaultIDSpecifier = "default"
+	defaultRemappedID  = "dockremap"
 
 	// constant for cgroup drivers
 	cgroupFsDriver      = "cgroupfs"
@@ -626,7 +626,7 @@ func verifyPlatformContainerSettings(daemon *Daemon, hostConfig *containertypes.
 		return warnings, fmt.Errorf("Unknown runtime specified %s", hostConfig.Runtime)
 	}
 
-	parser := volume.NewParser(runtime.GOOS)
+	parser := volumemounts.NewParser(runtime.GOOS)
 	for dest := range hostConfig.Tmpfs {
 		if err := parser.ValidateTmpfsMountDestination(dest); err != nil {
 			return warnings, err
@@ -646,13 +646,13 @@ func (daemon *Daemon) initRuntimes(runtimes map[string]types.Runtime) (err error
 	os.RemoveAll(runtimeDir + "-old")
 	tmpDir, err := ioutils.TempDir(daemon.configStore.Root, "gen-runtimes")
 	if err != nil {
-		return errors.Wrapf(err, "failed to get temp dir to generate runtime scripts")
+		return errors.Wrap(err, "failed to get temp dir to generate runtime scripts")
 	}
 	defer func() {
 		if err != nil {
 			if err1 := os.RemoveAll(tmpDir); err1 != nil {
 				logrus.WithError(err1).WithField("dir", tmpDir).
-					Warnf("failed to remove tmp dir")
+					Warn("failed to remove tmp dir")
 			}
 			return
 		}
@@ -661,12 +661,12 @@ func (daemon *Daemon) initRuntimes(runtimes map[string]types.Runtime) (err error
 			return
 		}
 		if err = os.Rename(tmpDir, runtimeDir); err != nil {
-			err = errors.Wrapf(err, "failed to setup runtimes dir, new containers may not start")
+			err = errors.Wrap(err, "failed to setup runtimes dir, new containers may not start")
 			return
 		}
 		if err = os.RemoveAll(runtimeDir + "-old"); err != nil {
 			logrus.WithError(err).WithField("dir", tmpDir).
-				Warnf("failed to remove old runtimes dir")
+				Warn("failed to remove old runtimes dir")
 		}
 	}()
 
@@ -832,6 +832,9 @@ func (daemon *Daemon) initNetworkController(config *config.Config, activeSandbox
 	if n, err := controller.NetworkByName("bridge"); err == nil {
 		if err = n.Delete(); err != nil {
 			return nil, fmt.Errorf("could not delete the default bridge network: %v", err)
+		}
+		if len(config.NetworkConfig.DefaultAddressPools.Value()) > 0 && !daemon.configStore.LiveRestoreEnabled {
+			removeDefaultBridgeInterface()
 		}
 	}
 
@@ -1123,7 +1126,7 @@ func setupRemappedRoot(config *config.Config) (*idtools.IDMappings, error) {
 
 		mappings, err := idtools.NewIDMappings(username, groupname)
 		if err != nil {
-			return nil, errors.Wrapf(err, "Can't create ID mappings: %v")
+			return nil, errors.Wrap(err, "Can't create ID mappings")
 		}
 		return mappings, nil
 	}
@@ -1177,12 +1180,55 @@ func setupDaemonRoot(config *config.Config, rootDir string, rootIDs idtools.IDPa
 		}
 	}
 
-	if err := ensureSharedOrSlave(config.Root); err != nil {
-		if err := mount.MakeShared(config.Root); err != nil {
-			logrus.WithError(err).WithField("dir", config.Root).Warn("Could not set daemon root propagation to shared, this is not generally critical but may cause some functionality to not work or fallback to less desirable behavior")
-		}
+	if err := setupDaemonRootPropagation(config); err != nil {
+		logrus.WithError(err).WithField("dir", config.Root).Warn("Error while setting daemon root propagation, this is not generally critical but may cause some functionality to not work or fallback to less desirable behavior")
 	}
 	return nil
+}
+
+func setupDaemonRootPropagation(cfg *config.Config) error {
+	rootParentMount, options, err := getSourceMount(cfg.Root)
+	if err != nil {
+		return errors.Wrap(err, "error getting daemon root's parent mount")
+	}
+
+	var cleanupOldFile bool
+	cleanupFile := getUnmountOnShutdownPath(cfg)
+	defer func() {
+		if !cleanupOldFile {
+			return
+		}
+		if err := os.Remove(cleanupFile); err != nil && !os.IsNotExist(err) {
+			logrus.WithError(err).WithField("file", cleanupFile).Warn("could not clean up old root propagation unmount file")
+		}
+	}()
+
+	if hasMountinfoOption(options, sharedPropagationOption, slavePropagationOption) {
+		cleanupOldFile = true
+		return nil
+	}
+
+	if err := mount.MakeShared(cfg.Root); err != nil {
+		return errors.Wrap(err, "could not setup daemon root propagation to shared")
+	}
+
+	// check the case where this may have already been a mount to itself.
+	// If so then the daemon only performed a remount and should not try to unmount this later.
+	if rootParentMount == cfg.Root {
+		cleanupOldFile = true
+		return nil
+	}
+
+	if err := ioutil.WriteFile(cleanupFile, nil, 0600); err != nil {
+		return errors.Wrap(err, "error writing file to signal mount cleanup on shutdown")
+	}
+	return nil
+}
+
+// getUnmountOnShutdownPath generates the path to used when writing the file that signals to the daemon that on shutdown
+// the daemon root should be unmounted.
+func getUnmountOnShutdownPath(config *config.Config) string {
+	return filepath.Join(config.ExecRoot, "unmount-on-shutdown")
 }
 
 // registerLinks writes the links to a file.

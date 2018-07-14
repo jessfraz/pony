@@ -5,12 +5,11 @@ import (
 	"testing"
 
 	"github.com/docker/docker/api/types"
-	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
-	"github.com/docker/docker/api/types/network"
-	"github.com/docker/docker/integration/internal/request"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
+	"github.com/docker/docker/integration/internal/container"
+	"github.com/docker/docker/internal/test/request"
+	"gotest.tools/assert"
+	is "gotest.tools/assert/cmp"
 )
 
 func TestPsFilter(t *testing.T) {
@@ -18,26 +17,12 @@ func TestPsFilter(t *testing.T) {
 	client := request.NewAPIClient(t)
 	ctx := context.Background()
 
-	createContainerForFilter := func(ctx context.Context, name string) string {
-		body, err := client.ContainerCreate(ctx,
-			&container.Config{
-				Cmd:   []string{"top"},
-				Image: "busybox",
-			},
-			&container.HostConfig{},
-			&network.NetworkingConfig{},
-			name,
-		)
-		require.NoError(t, err)
-		return body.ID
-	}
-
-	prev := createContainerForFilter(ctx, "prev")
-	createContainerForFilter(ctx, "top")
-	next := createContainerForFilter(ctx, "next")
+	prev := container.Create(t, ctx, client)
+	top := container.Create(t, ctx, client)
+	next := container.Create(t, ctx, client)
 
 	containerIDs := func(containers []types.Container) []string {
-		entries := []string{}
+		var entries []string
 		for _, container := range containers {
 			entries = append(entries, container.ID)
 		}
@@ -45,20 +30,20 @@ func TestPsFilter(t *testing.T) {
 	}
 
 	f1 := filters.NewArgs()
-	f1.Add("since", "top")
+	f1.Add("since", top)
 	q1, err := client.ContainerList(ctx, types.ContainerListOptions{
 		All:     true,
 		Filters: f1,
 	})
-	require.NoError(t, err)
-	assert.Contains(t, containerIDs(q1), next)
+	assert.NilError(t, err)
+	assert.Check(t, is.Contains(containerIDs(q1), next))
 
 	f2 := filters.NewArgs()
-	f2.Add("before", "top")
+	f2.Add("before", top)
 	q2, err := client.ContainerList(ctx, types.ContainerListOptions{
 		All:     true,
 		Filters: f2,
 	})
-	require.NoError(t, err)
-	assert.Contains(t, containerIDs(q2), prev)
+	assert.NilError(t, err)
+	assert.Check(t, is.Contains(containerIDs(q2), prev))
 }
