@@ -1,6 +1,7 @@
 # pony
 
-[![Travis CI](https://travis-ci.org/jessfraz/pony.svg?branch=master)](https://travis-ci.org/jessfraz/pony)
+[![Travis CI](https://img.shields.io/travis/jessfraz/pony.svg?style=for-the-badge)](https://travis-ci.org/jessfraz/pony)
+[![GoDoc](https://img.shields.io/badge/godoc-reference-5272B4.svg?style=for-the-badge)](https://godoc.org/github.com/jessfraz/pony)
 
 Local file-based password, API key, secret, recovery code store backed by GPG.
 
@@ -8,15 +9,11 @@ Local file-based password, API key, secret, recovery code store backed by GPG.
 
 #### Binaries
 
-- **darwin** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-darwin-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-darwin-amd64)
-- **freebsd** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-freebsd-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-freebsd-amd64)
-- **linux** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-amd64) / [arm](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-arm) / [arm64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-linux-arm64)
-- **solaris** [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-solaris-amd64)
-- **windows** [386](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-windows-386) / [amd64](https://github.com/jessfraz/pony/releases/download/v0.2.1/pony-windows-amd64)
+For installation instructions from binaries please visit the [Releases Page](https://github.com/jessfraz/pony/releases).
 
 #### Via Go
 
-```bash
+```console
 $ go get github.com/jessfraz/pony
 ```
 
