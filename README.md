@@ -5,6 +5,14 @@
 
 Local file-based password, API key, secret, recovery code store backed by GPG.
 
+ * [Installation](README.md#installation)
+      * [Binaries](README.md#binaries)
+      * [Via Go](README.md#via-go)
+ * [Usage](README.md#usage)
+   * [Best Practices](README.md#best-practices)
+      * [HISTIGNORE](README.md#histignore)
+      * [Namespacing Keys](README.md#namespacing-keys)
+
 ## Installation
 
 #### Binaries
@@ -21,34 +29,24 @@ $ go get github.com/jessfraz/pony
 
 ```console
 $ pony -h
-NAME:
-   pony - Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG
+pony -  Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG.
 
-USAGE:
-   pony [global options] command [command options] [arguments...]
+Usage: pony <command>
 
-VERSION:
-   version v0.2.1, build 33bfbcc
+Flags:
 
-AUTHOR(S):
-   @jessfraz <no-reply@butts.com>
+  -d, --debug  enable debug logging (default: false)
+  -f, --file   file to use for saving encrypted secrets (default: ~/.pony)
+  --gpgpath    filepath used for gpg keys (default: ~/.gnupg/)
+  --keyid      optionally set specific gpg keyid/fingerprint to use for encryption & decryption (or env var PONY_KEYID)
 
-COMMANDS:
-   add, save    Add a new secret
-   delete, rm   Delete a secret
-   get          Get the value of a secret
-   list, ls     List all secrets
-   update       Update a secret
-   help, h      Shows a list of commands or help for one command
+Commands:
 
-GLOBAL OPTIONS:
-   --debug, -d                  run in debug mode
-   --file, -f "~/.pony"         file to use for saving encrypted secrets
-   --gpgpath "~/.gnupg/"        filepath used for gpg keys
-   --keyid                      optionally set specific gpg keyid/fingerprint to use for encryption & decryption [$PONY_KEYID]
-   --help, -h                   show help
-   --generate-bash-completion
-   --version, -v                print the version
+  create   Create a secret.
+  get      Get details for a secret.
+  ls       List secrets.
+  rm       Delete a secret.
+  version  Show the version information.
 ```
 
 ### Best Practices

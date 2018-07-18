@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/jessfraz/pony/gpg"
 )
@@ -12,32 +13,6 @@ import (
 // decrypted secret filestorage is organized.
 type SecretFile struct {
 	Secrets map[string]string `json:"secrets,omitempty"`
-}
-
-// preChecks makes sure the user has gpg set up for saving secrets
-// as well as a filestore file created (even if blank).
-// That way we wont have to be sure about making sure the file exists later.
-func preChecks() error {
-	gpgErrorString := "Have you generated a gpg key? You can do so with `$ gpg --gen-key`."
-
-	if _, err := os.Stat(publicKeyring); os.IsNotExist(err) {
-
-		return fmt.Errorf("GPG Public Keyring (%s) does not exist.\n%s", publicKeyring, gpgErrorString)
-	}
-
-	if _, err := os.Stat(secretKeyring); os.IsNotExist(err) {
-
-		return fmt.Errorf("GPG Secret Keyring (%s) does not exist.\n%s", secretKeyring, gpgErrorString)
-	}
-
-	// create our secrets filestore if it does not exist
-	if _, err := os.Stat(filestore); os.IsNotExist(err) {
-		if err := writeSecretsFile(filestore, SecretFile{}); err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 // readSecretsFile opens the secrets filestore,
@@ -51,7 +26,7 @@ func readSecretsFile(filename string) (s SecretFile, err error) {
 	defer f.Close()
 
 	// decrypt the file
-	decryptedFile, err := gpg.Decrypt(f, secretKeyring, defaultGPGKey)
+	decryptedFile, err := gpg.Decrypt(f, filepath.Join(gpgpath, "secring.gpg"), keyid)
 	if err != nil {
 		return s, fmt.Errorf("gpg decrypt file failed: %v", err)
 	}
@@ -59,7 +34,7 @@ func readSecretsFile(filename string) (s SecretFile, err error) {
 	// unmarshal the contents
 	jsonParser := json.NewDecoder(decryptedFile)
 	if err = jsonParser.Decode(&s); err != nil {
-		return s, fmt.Errorf("json decoding decrypted file failed: %v", err.Error())
+		return s, fmt.Errorf("json decoding decrypted file failed: %v", err)
 	}
 
 	return s, err
@@ -68,9 +43,9 @@ func readSecretsFile(filename string) (s SecretFile, err error) {
 // writeSecretsFile takes a SecretsFile struct marshals,
 // encrypts, and writes it to the secrets filestore.
 func writeSecretsFile(filename string, s SecretFile) error {
-	f, err := os.Create(filestore)
+	f, err := os.Create(file)
 	if err != nil {
-		return fmt.Errorf("Could not create filestore for secrets at %s: %v", filestore, err)
+		return fmt.Errorf("Could not create filestore for secrets at %s: %v", file, err)
 	}
 	defer f.Close()
 
@@ -80,7 +55,7 @@ func writeSecretsFile(filename string, s SecretFile) error {
 	}
 
 	// encrypt the string to the file
-	encryptedBytes, err := gpg.Encrypt(b, publicKeyring)
+	encryptedBytes, err := gpg.Encrypt(b, filepath.Join(gpgpath, "pubring.gpg"))
 	if err != nil {
 		return fmt.Errorf("gpg encrypt on file create failed: %v", err)
 	}
@@ -108,5 +83,5 @@ func (s *SecretFile) setKeyValue(key, value string, force bool) error {
 		s.Secrets[key] = value
 	}
 
-	return writeSecretsFile(filestore, *s)
+	return writeSecretsFile(file, *s)
 }

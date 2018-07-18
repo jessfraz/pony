@@ -1,19 +1,17 @@
 package main
 
 import (
+	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
-	"text/tabwriter"
 
-	"github.com/atotto/clipboard"
+	"github.com/genuinetools/pkg/cli"
 	"github.com/jessfraz/pony/version"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
 )
 
 const (
@@ -22,225 +20,93 @@ const (
 )
 
 var (
-	defaultGPGKey string
-	filestore     string
-	gpgPath       string
-	publicKeyring string
-	secretKeyring string
+	file    string
+	gpgpath string
+	keyid   string
 
 	s SecretFile
 
 	debug bool
 )
 
-// preload initializes any global options and configuration
-// before the main or sub commands are run
-func preload(c *cli.Context) (err error) {
-	if c.GlobalBool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
-
-	defaultGPGKey = c.GlobalString("keyid")
-
-	home, err := getHome()
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	// set the filestore variable
-	filestore = strings.Replace(c.GlobalString("file"), homeShortcut, home, 1)
-
-	// set gpg path variables
-	gpgPath = strings.Replace(c.GlobalString("gpgpath"), homeShortcut, home, 1)
-	publicKeyring = filepath.Join(gpgPath, "pubring.gpg")
-	secretKeyring = filepath.Join(gpgPath, "secring.gpg")
-
-	// if they passed an arguement, run the prechecks
-	// TODO(jessfraz): this will run even if the command they issue
-	// does not exist, which is kinda shitty
-	if len(c.Args()) > 0 {
-		preChecks()
-	}
-
-	// we need to read the secrets file for all commands
-	// might as well be dry about it
-	s, err = readSecretsFile(filestore)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-
-	return nil
-}
-
 func main() {
-	app := cli.NewApp()
-	app.Name = "pony"
-	app.Version = fmt.Sprintf("version %s, build %s", version.VERSION, version.GITCOMMIT)
-	app.Author = "@jessfraz"
-	app.Email = "no-reply@butts.com"
-	app.Usage = "Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG"
-	app.Before = preload
-	app.EnableBashCompletion = true
-	app.Flags = []cli.Flag{
-		cli.BoolFlag{
-			Name:  "debug, d",
-			Usage: "run in debug mode",
-		},
-		cli.StringFlag{
-			Name:  "file, f",
-			Value: fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore),
-			Usage: "file to use for saving encrypted secrets",
-		},
-		cli.StringFlag{
-			Name:  "gpgpath",
-			Value: fmt.Sprintf("%s/%s", homeShortcut, defaultGPGPath),
-			Usage: "filepath used for gpg keys",
-		},
-		cli.StringFlag{
-			Name:   "keyid",
-			Usage:  "optionally set specific gpg keyid/fingerprint to use for encryption & decryption",
-			EnvVar: fmt.Sprintf("%s_KEYID", strings.ToUpper(app.Name)),
-		},
+	// Create a new cli program.
+	p := cli.NewProgram()
+	p.Name = "pony"
+	p.Description = "Local File-Based Password, API Key, Secret, Recovery Code Store Backed By GPG"
+	// Set the GitCommit and Version.
+	p.GitCommit = version.GITCOMMIT
+	p.Version = version.VERSION
+
+	// Build the list of available commands.
+	p.Commands = []cli.Command{
+		&createCommand{},
+		&getCommand{},
+		&listCommand{},
+		&removeCommand{},
 	}
-	app.Commands = []cli.Command{
-		{
-			Name:    "add",
-			Aliases: []string{"save"},
-			Usage:   "Add a new secret",
-			Action: func(c *cli.Context) {
-				args := c.Args()
-				if len(args) < 2 {
-					logrus.Errorf("You need to pass a key and value to the command. ex: %s %s com.example.apikey EUSJCLLAWE", app.Name, c.Command.Name)
-					cli.ShowSubcommandHelp(c)
-					return
-				}
 
-				// add the key value pair to secrets
-				key, value := args[0], args[1]
-				s.setKeyValue(key, value, false)
+	// Setup the global flags.
+	p.FlagSet = flag.NewFlagSet("global", flag.ExitOnError)
+	p.FlagSet.StringVar(&file, "f", fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore), "file to use for saving encrypted secrets")
+	p.FlagSet.StringVar(&file, "file", fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore), "file to use for saving encrypted secrets")
 
-				fmt.Printf("Added %s %s to secrets", key, value)
-			},
-		},
-		{
-			Name:    "delete",
-			Aliases: []string{"rm"},
-			Usage:   "Delete a secret",
-			Action: func(c *cli.Context) {
-				args := c.Args()
-				if len(args) < 1 {
-					cli.ShowSubcommandHelp(c)
-					return
-				}
+	p.FlagSet.StringVar(&gpgpath, "gpgpath", fmt.Sprintf("%s/%s", homeShortcut, defaultGPGPath), "filepath used for gpg keys")
 
-				key := args[0]
-				if _, ok := s.Secrets[key]; !ok {
-					logrus.Fatalf("Secret for (%s) does not exist", key)
-				}
-				delete(s.Secrets, key)
+	p.FlagSet.StringVar(&keyid, "keyid", os.Getenv("PONY_KEYID"), "optionally set specific gpg keyid/fingerprint to use for encryption & decryption (or env var PONY_KEYID)")
 
-				if err := writeSecretsFile(filestore, s); err != nil {
-					logrus.Fatal(err)
-				}
+	p.FlagSet.BoolVar(&debug, "d", false, "enable debug logging")
+	p.FlagSet.BoolVar(&debug, "debug", false, "enable debug logging")
 
-				fmt.Printf("Secret %q deleted successfully", key)
-			},
-		},
-		{
-			Name:  "get",
-			Usage: "Get the value of a secret",
-			Flags: []cli.Flag{
-				cli.BoolFlag{
-					Name:  "copy, c",
-					Usage: "copy the secret to your clipboard",
-				},
-			},
-			Action: func(c *cli.Context) {
-				args := c.Args()
-				if len(args) < 1 {
-					cli.ShowSubcommandHelp(c)
-					return
-				}
+	// Set the before function.
+	p.Before = func(ctx context.Context) error {
+		// Set the log level.
+		if debug {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
 
-				// add the key value pair to secrets
-				key := args[0]
-				if _, ok := s.Secrets[key]; !ok {
-					logrus.Fatalf("Secret for (%s) does not exist", key)
-				}
+		home, err := getHome()
+		if err != nil {
+			logrus.Fatal(err)
+		}
 
-				fmt.Println(s.Secrets[key])
+		// Set the file variable.
+		file = strings.Replace(file, homeShortcut, home, 1)
 
-				// copy to clipboard
-				if c.Bool("copy") {
-					if err := clipboard.WriteAll(s.Secrets[key]); err != nil {
-						logrus.Fatalf("Clipboard copy failed: %v", err)
-					}
-					fmt.Println("Copied to clipboard!")
-				}
-			},
-		},
-		{
-			Name:    "list",
-			Aliases: []string{"ls"},
-			Usage:   "List all secrets",
-			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:  "filter, f",
-					Usage: "filter secrets keys by a regular expression",
-				},
-			},
-			Action: func(c *cli.Context) {
-				w := tabwriter.NewWriter(os.Stdout, 20, 1, 3, ' ', 0)
+		// Set the gpg path variables.
+		gpgpath = strings.Replace(gpgpath, homeShortcut, home, 1)
 
-				// print header
-				fmt.Fprintln(w, "KEY\tVALUE")
+		gpgError := "Have you generated a gpg key? You can do so with `$ gpg --gen-key`."
 
-				// print the keys alphabetically
-				printSorted := func(m map[string]string) {
-					mk := make([]string, len(m))
-					i := 0
-					for k := range m {
-						mk[i] = k
-						i++
-					}
-					sort.Strings(mk)
+		if _, err := os.Stat(filepath.Join(gpgpath, "pubring.gpg")); os.IsNotExist(err) {
 
-					for _, key := range mk {
-						filter := c.String("filter")
-						if filter != "" {
-							if ok, _ := regexp.MatchString(c.String("filter"), key); !ok {
-								continue
-							}
-						}
-						fmt.Fprintf(w, "%s\t%s\n", key, m[key])
-					}
-				}
+			return fmt.Errorf("GPG Public Keyring does not exist.\n%s", gpgError)
+		}
 
-				printSorted(s.Secrets)
+		if _, err := os.Stat(filepath.Join(gpgpath, "secring.gpg")); os.IsNotExist(err) {
 
-				w.Flush()
-			},
-		},
-		{
-			Name:  "update",
-			Usage: "Update a secret",
-			Action: func(c *cli.Context) {
-				args := c.Args()
-				if len(args) < 2 {
-					logrus.Errorf("You need to pass a key and value to the command. ex: %s %s com.example.apikey EUSJCLLAWE", app.Name, c.Command.Name)
-					cli.ShowSubcommandHelp(c)
-					return
-				}
+			return fmt.Errorf("GPG Secret Keyring does not exist.\n%s", gpgError)
+		}
 
-				// add the key value pair to secrets
-				key, value := args[0], args[1]
-				s.setKeyValue(key, value, true)
+		// Create our secrets filesif it does not exist.
+		if _, err := os.Stat(file); os.IsNotExist(err) {
+			if err := writeSecretsFile(file, SecretFile{}); err != nil {
+				return err
+			}
+		}
 
-				fmt.Printf("Updated secret %s to %s", key, value)
-			},
-		},
+		// We need to read the secrets file for all commands
+		// might as well be dry about it.
+		s, err = readSecretsFile(file)
+		if err != nil {
+			logrus.Fatal(err)
+		}
+
+		return nil
 	}
-	app.Run(os.Args)
+
+	// Run our program.
+	p.Run()
 }
 
 func getHome() (string, error) {
