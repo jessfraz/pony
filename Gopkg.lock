@@ -3,33 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:81f8c061c3d18ed1710957910542bc17d2b789c6cd19e0f654c30b35fd255ca5"
-  name = "github.com/Azure/go-ansiterm"
-  packages = [
-    ".",
-    "winterm",
-  ]
-  pruneopts = "NUT"
-  revision = "d6e3b3328b783f23731bc4d058875b0371ff8109"
-
-[[projects]]
-  branch = "master"
   digest = "1:42a9a40c96863fe9456abdebeb5d25e226dbfea5011250aa286247bb2705e336"
   name = "github.com/atotto/clipboard"
   packages = ["."]
   pruneopts = "NUT"
   revision = "5e2c7bddca04488284428a201e4a15615f7a5074"
-
-[[projects]]
-  branch = "master"
-  digest = "1:5c87041b31a0c6f12176534cfbebc5b0a640156fb7bc80ae9b0734bdad4264cb"
-  name = "github.com/docker/docker"
-  packages = [
-    "pkg/term",
-    "pkg/term/windows",
-  ]
-  pruneopts = "NUT"
-  revision = "25ec60d3cdc14a444f54b741a65ef5ef199844a2"
 
 [[projects]]
   branch = "master"
@@ -49,20 +27,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:9a8d925dbcb507a6a26b3e37873c74a1a27fe09c0b94697d68ecee721ac59f7d"
+  digest = "1:3f3a05ae0b95893d90b9b3b5afdb79a9b3d96e4e36e099d841ae602e4aca0da8"
   name = "golang.org/x/crypto"
-  packages = [
-    "cast5",
-    "openpgp",
-    "openpgp/armor",
-    "openpgp/elgamal",
-    "openpgp/errors",
-    "openpgp/packet",
-    "openpgp/s2k",
-    "ssh/terminal",
-  ]
+  packages = ["ssh/terminal"]
   pruneopts = "NUT"
-  revision = "a49355c7e3f8fe157a85be2f77e6e269a0f89602"
+  revision = "a2144134853fc9a27a7b1e3eb4f19f1a76df13c9"
 
 [[projects]]
   branch = "master"
@@ -80,10 +49,8 @@
   analyzer-version = 1
   input-imports = [
     "github.com/atotto/clipboard",
-    "github.com/docker/docker/pkg/term",
     "github.com/genuinetools/pkg/cli",
     "github.com/sirupsen/logrus",
-    "golang.org/x/crypto/openpgp",
   ]
   solver-name = "gps-cdcl"
   solver-version = 1
