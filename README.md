@@ -36,8 +36,7 @@ Usage: pony <command>
 Flags:
 
   -d, --debug  enable debug logging (default: false)
-  -f, --file   file to use for saving encrypted secrets (default: ~/.pony)
-  --gpgpath    filepath used for gpg keys (default: ~/.gnupg/)
+  --file       file to use for saving encrypted secrets (default: ~/.pony)
   --keyid      optionally set specific gpg keyid/fingerprint to use for encryption & decryption (or env var PONY_KEYID)
 
 Commands:
@@ -64,10 +63,10 @@ export HISTIGNORE="ls:cd:cd -:pwd:exit:date:* --help:pony:pony *";
 You should namespace the keys for your secrets like the following:
 
 ```console
-$ pony add com.twitter.frazelledazzell.token KJDHJKFHDSBJDF
+$ pony create com.twitter.frazelledazzell.token KJDHJKFHDSBJDF
 # GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>":
 
-$ pony add com.github.jessfraz.token LKJHSDLFKJDHF
+$ pony create com.github.jessfraz.token LKJHSDLFKJDHF
 # GPG Passphrase for key "Jess Frazelle <butts@systemd.lol>":
 
 # if a key ends with `.recovery`

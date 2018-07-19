@@ -15,9 +15,14 @@ func (cmd *createCommand) ShortHelp() string { return createHelp }
 func (cmd *createCommand) LongHelp() string  { return createHelp }
 func (cmd *createCommand) Hidden() bool      { return false }
 
-func (cmd *createCommand) Register(fs *flag.FlagSet) {}
+func (cmd *createCommand) Register(fs *flag.FlagSet) {
+	fs.BoolVar(&cmd.force, "force", false, "force overwrite existing value")
+	fs.BoolVar(&cmd.force, "f", false, "force overwrite existing value")
+}
 
-type createCommand struct{}
+type createCommand struct {
+	force bool
+}
 
 func (cmd *createCommand) Run(ctx context.Context, args []string) error {
 	if len(args) < 2 {
@@ -33,7 +38,7 @@ func (cmd *createCommand) Run(ctx context.Context, args []string) error {
 
 	// Add the key value pair to secrets.
 	key, value := args[0], args[1]
-	s.setKeyValue(key, value, false)
+	s.setKeyValue(key, value, cmd.force)
 
 	fmt.Printf("%s %s %s to secrets", verb, key, value)
 	return nil

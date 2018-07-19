@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/user"
-	"path/filepath"
 	"strings"
 
 	"github.com/genuinetools/pkg/cli"
@@ -24,7 +23,7 @@ var (
 	gpgpath string
 	keyid   string
 
-	s SecretFile
+	s secretFile
 
 	debug bool
 )
@@ -48,10 +47,7 @@ func main() {
 
 	// Setup the global flags.
 	p.FlagSet = flag.NewFlagSet("global", flag.ExitOnError)
-	p.FlagSet.StringVar(&file, "f", fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore), "file to use for saving encrypted secrets")
 	p.FlagSet.StringVar(&file, "file", fmt.Sprintf("%s/%s", homeShortcut, defaultFilestore), "file to use for saving encrypted secrets")
-
-	p.FlagSet.StringVar(&gpgpath, "gpgpath", fmt.Sprintf("%s/%s", homeShortcut, defaultGPGPath), "filepath used for gpg keys")
 
 	p.FlagSet.StringVar(&keyid, "keyid", os.Getenv("PONY_KEYID"), "optionally set specific gpg keyid/fingerprint to use for encryption & decryption (or env var PONY_KEYID)")
 
@@ -73,24 +69,9 @@ func main() {
 		// Set the file variable.
 		file = strings.Replace(file, homeShortcut, home, 1)
 
-		// Set the gpg path variables.
-		gpgpath = strings.Replace(gpgpath, homeShortcut, home, 1)
-
-		gpgError := "Have you generated a gpg key? You can do so with `$ gpg --gen-key`."
-
-		if _, err := os.Stat(filepath.Join(gpgpath, "pubring.gpg")); os.IsNotExist(err) {
-
-			return fmt.Errorf("GPG Public Keyring does not exist.\n%s", gpgError)
-		}
-
-		if _, err := os.Stat(filepath.Join(gpgpath, "secring.gpg")); os.IsNotExist(err) {
-
-			return fmt.Errorf("GPG Secret Keyring does not exist.\n%s", gpgError)
-		}
-
-		// Create our secrets filesif it does not exist.
+		// Create our secrets file if it does not exist.
 		if _, err := os.Stat(file); os.IsNotExist(err) {
-			if err := writeSecretsFile(file, SecretFile{}); err != nil {
+			if err := writeSecretsFile(file, secretFile{}); err != nil {
 				return err
 			}
 		}

@@ -9,43 +9,39 @@ import (
 	"github.com/jessfraz/pony/gpg"
 )
 
-// SecretFile is the structure for how the
-// decrypted secret filestorage is organized.
-type SecretFile struct {
+// secretFile is the structure for how the decrypted secret filestorage is organized.
+type secretFile struct {
 	Secrets map[string]string `json:"secrets,omitempty"`
 }
 
-// readSecretsFile opens the secrets filestore,
-// decrypts the file contents, and unmarshals
-// the contents as SecretsFile.
-func readSecretsFile(filename string) (s SecretFile, err error) {
-	f, err := os.Open(filename)
+// readSecretsFile opens the secrets filestore, decrypts the file contents,
+// and unmarshals the contents as SecretsFile.
+func readSecretsFile(filename string) (s secretFile, err error) {
+	f, err := filepath.Abs(filename)
 	if err != nil {
-		return s, fmt.Errorf("opening secrets file failed: %v", err.Error())
+		return s, err
 	}
-	defer f.Close()
 
-	// decrypt the file
-	decryptedFile, err := gpg.Decrypt(f, filepath.Join(gpgpath, "secring.gpg"), keyid)
+	// Decrypt the file.
+	file, err := gpg.Decrypt(f)
 	if err != nil {
 		return s, fmt.Errorf("gpg decrypt file failed: %v", err)
 	}
 
-	// unmarshal the contents
-	jsonParser := json.NewDecoder(decryptedFile)
-	if err = jsonParser.Decode(&s); err != nil {
-		return s, fmt.Errorf("json decoding decrypted file failed: %v", err)
+	// Unmarshal the contents.
+	if err = json.NewDecoder(file).Decode(&s); err != nil {
+		return s, err
 	}
 
 	return s, err
 }
 
-// writeSecretsFile takes a SecretsFile struct marshals,
-// encrypts, and writes it to the secrets filestore.
-func writeSecretsFile(filename string, s SecretFile) error {
+// writeSecretsFile takes a SecretsFile struct and marshals, encrypts, and
+// writes it to the secrets filestore.
+func writeSecretsFile(filename string, s secretFile) error {
 	f, err := os.Create(file)
 	if err != nil {
-		return fmt.Errorf("Could not create filestore for secrets at %s: %v", file, err)
+		return fmt.Errorf("could not create filestore for secrets at %s: %v", file, err)
 	}
 	defer f.Close()
 
@@ -54,31 +50,29 @@ func writeSecretsFile(filename string, s SecretFile) error {
 		return fmt.Errorf("marshaling secret file to json failed: %v", s)
 	}
 
-	// encrypt the string to the file
-	encryptedBytes, err := gpg.Encrypt(b, filepath.Join(gpgpath, "pubring.gpg"))
+	// Encrypt the string to the file
+	eb, err := gpg.Encrypt(b, keyid)
 	if err != nil {
 		return fmt.Errorf("gpg encrypt on file create failed: %v", err)
 	}
 
-	if _, err := f.Write(encryptedBytes); err != nil {
-
+	if _, err := f.Write(eb); err != nil {
 		return fmt.Errorf("writing to file failed: %v", err)
 	}
 
 	return nil
 }
 
-func (s *SecretFile) setKeyValue(key, value string, force bool) error {
-	// add the key value pair to secrets
+func (s *secretFile) setKeyValue(key, value string, force bool) error {
+	// Add the key value pair to secrets.
 	if len(s.Secrets) == 0 {
 		s.Secrets = map[string]string{
 			key: value,
 		}
 	} else {
-		// check if the key already exists
-		// and warn the user we are overwriting
-		if val, ok := s.Secrets[key]; ok && !force {
-			return fmt.Errorf("Secret for (%s) already exists with value (%s), use `update` command instead", key, val)
+		// Check if the key already exists and warn the user we are overwriting.
+		if _, ok := s.Secrets[key]; ok && !force {
+			return fmt.Errorf("Secret for key %s already exists, use `--force` to overwrite", key)
 		}
 		s.Secrets[key] = value
 	}
