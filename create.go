@@ -40,6 +40,6 @@ func (cmd *createCommand) Run(ctx context.Context, args []string) error {
 	key, value := args[0], args[1]
 	s.setKeyValue(key, value, cmd.force)
 
-	fmt.Printf("%s %s %s to secrets", verb, key, value)
+	fmt.Printf("%s %s %s to secrets\n", verb, key, value)
 	return nil
 }
