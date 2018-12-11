@@ -39,12 +39,6 @@ func readSecretsFile(filename string) (s secretFile, err error) {
 // writeSecretsFile takes a SecretsFile struct and marshals, encrypts, and
 // writes it to the secrets filestore.
 func writeSecretsFile(filename string, s secretFile) error {
-	f, err := os.Create(file)
-	if err != nil {
-		return fmt.Errorf("could not create filestore for secrets at %s: %v", file, err)
-	}
-	defer f.Close()
-
 	b, err := json.Marshal(s)
 	if err != nil {
 		return fmt.Errorf("marshaling secret file to json failed: %v", s)
@@ -55,6 +49,12 @@ func writeSecretsFile(filename string, s secretFile) error {
 	if err != nil {
 		return fmt.Errorf("gpg encrypt on file create failed: %v", err)
 	}
+
+	f, err := os.Create(file)
+	if err != nil {
+		return fmt.Errorf("could not create filestore for secrets at %s: %v", file, err)
+	}
+	defer f.Close()
 
 	if _, err := f.Write(eb); err != nil {
 		return fmt.Errorf("writing to file failed: %v", err)
