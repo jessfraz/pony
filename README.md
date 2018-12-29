@@ -9,6 +9,14 @@ Local file-based password, API key, secret, recovery code store backed by GPG.
 
 <!-- toc -->
 
+- [Installation](#installation)
+    + [Binaries](#binaries)
+    + [Via Go](#via-go)
+- [Usage](#usage)
+  * [Best Practices](#best-practices)
+    + [`HISTIGNORE`](#histignore)
+    + [Namespacing Keys](#namespacing-keys)
+
 <!-- tocstop -->
 
 ## Installation
