@@ -5,13 +5,11 @@
 
 Local file-based password, API key, secret, recovery code store backed by GPG.
 
- * [Installation](README.md#installation)
-      * [Binaries](README.md#binaries)
-      * [Via Go](README.md#via-go)
- * [Usage](README.md#usage)
-   * [Best Practices](README.md#best-practices)
-      * [HISTIGNORE](README.md#histignore)
-      * [Namespacing Keys](README.md#namespacing-keys)
+**Table of Contents**
+
+<!-- toc -->
+
+<!-- tocstop -->
 
 ## Installation
 
