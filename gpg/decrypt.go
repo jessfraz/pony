@@ -1,26 +1,14 @@
 package gpg
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"os/exec"
 	"strings"
 )
-
-func readInput(in io.Reader, out io.Writer) []byte {
-	reader := bufio.NewReader(in)
-	line, _, err := reader.ReadLine()
-	if err != nil {
-		fmt.Fprintln(out, err.Error())
-		os.Exit(1)
-	}
-	return line
-}
 
 // Decrypt a file.
 func Decrypt(f string) (io.Reader, error) {

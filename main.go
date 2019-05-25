@@ -19,9 +19,8 @@ const (
 )
 
 var (
-	file    string
-	gpgpath string
-	keyid   string
+	file  string
+	keyid string
 
 	s secretFile
 

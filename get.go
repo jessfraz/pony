@@ -33,7 +33,7 @@ func (cmd *getCommand) Run(ctx context.Context, args []string) error {
 	// Get the key value pair from secrets.
 	key := args[0]
 	if _, ok := s.Secrets[key]; !ok {
-		return fmt.Errorf("Secret for key %s does not exist", key)
+		return fmt.Errorf("secret for key %s does not exist", key)
 	}
 
 	fmt.Println(s.Secrets[key])

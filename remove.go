@@ -26,7 +26,7 @@ func (cmd *removeCommand) Run(ctx context.Context, args []string) error {
 
 	key := args[0]
 	if _, ok := s.Secrets[key]; !ok {
-		return fmt.Errorf("Secret for key %s does not exist", key)
+		return fmt.Errorf("secret for key %s does not exist", key)
 	}
 	delete(s.Secrets, key)
 
