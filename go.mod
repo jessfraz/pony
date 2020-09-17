@@ -1,5 +1,7 @@
 module github.com/jessfraz/pony
 
+go 1.14
+
 require (
 	github.com/atotto/clipboard v0.1.0
 	github.com/davecgh/go-spew v1.1.1 // indirect
