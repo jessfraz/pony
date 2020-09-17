@@ -12,14 +12,13 @@ Local file-based password, API key, secret, recovery code store backed by GPG.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [pony](#pony)
-  - [Installation](#installation)
-      - [Binaries](#binaries)
-      - [Via Go](#via-go)
-  - [Usage](#usage)
-    - [Best Practices](#best-practices)
-      - [`HISTIGNORE`](#histignore)
-      - [Namespacing Keys](#namespacing-keys)
+- [Installation](#installation)
+    - [Binaries](#binaries)
+    - [Via Go](#via-go)
+- [Usage](#usage)
+  - [Best Practices](#best-practices)
+    - [`HISTIGNORE`](#histignore)
+    - [Namespacing Keys](#namespacing-keys)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
