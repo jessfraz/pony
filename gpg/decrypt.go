@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -13,7 +13,7 @@ import (
 // Decrypt a file.
 func Decrypt(f string) (io.Reader, error) {
 	// Open and read the file.
-	body, err := ioutil.ReadFile(f)
+	body, err := os.ReadFile(f)
 	if err != nil {
 		return nil, err
 	}
